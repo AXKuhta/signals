@@ -47,7 +47,7 @@ class minmaxplot():
 		self.traces = []
 
 	def reset_color_cycler(self):
-		self.hsl_color_cycler = [] + plotly.colors.qualitative.Plotly + plotly.colors.qualitative.T10
+		self.hsl_color_cycler = [] + plotly.colors.qualitative.Plotly + plotly.colors.qualitative.T10 + ["#FF0000"]*90
 
 	def trace(self, time, signal, name=None, hidden=False, error_band=None, dash=None, width=None, secondary=False):
 		color = self.hsl_color_cycler.pop(0)
