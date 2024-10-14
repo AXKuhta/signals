@@ -87,7 +87,7 @@ def run_v1():
 	#
 	# Do one at a time
 	#
-	for freq in freq_set:
+	for freq in sorted(freq_set):
 		filter_fn = lambda x: x.center_freq == freq and x.channel_number == 1
 		ref = filter(filter_fn, captures_ref)
 		dut = filter(filter_fn, captures_dut)
@@ -109,7 +109,7 @@ def run_v1():
 		x = temporal_freq[indices] + freq
 		y = mampl[indices]
 
-		spectral.trace(x, y, error_band=[lower[indices], upper[indices]])
+		spectral.trace(x, y, error_band=(lower[indices], upper[indices]), name=f"{freq/1000/1000}MHz")
 
 	disp = page([spectral])
 	disp.show()
