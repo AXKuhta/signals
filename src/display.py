@@ -41,10 +41,18 @@ class minmaxplot():
 		self.reset_color_cycler()
 		self.secondary_y = secondary_y
 		self.logscale = logscale
+		self.y_title = None
+		self.x_title = None
 		self.x_unit = x_unit
 		self.planar = planar
 		self.title = title
 		self.traces = []
+
+	def xtitle(self, title):
+		self.x_title = title
+
+	def ytitle(self, title):
+		self.y_title = title
 
 	def reset_color_cycler(self):
 		self.hsl_color_cycler = [] + plotly.colors.qualitative.Plotly + plotly.colors.qualitative.T10 + ["#FF0000"]*90
@@ -59,7 +67,8 @@ class minmaxplot():
 			y=signal,
 			name=name,
 			line=dict(color=color, dash=dash, width=width), # shape="spline", smoothing=1 slow
-			visible="legendonly" if hidden else True
+			visible="legendonly" if hidden else True,
+			mode="lines+markers"
 		)
 
 		if error_band is None:
@@ -96,7 +105,10 @@ class minmaxplot():
 	def fig(self):
 		#fig = plotly.graph_objects.Figure(data=self.plots, secondary_y=True)
 
-		fig = make_subplots(specs=[[{"secondary_y": self.secondary_y}]])
+		fig = make_subplots(specs=[[{
+			"secondary_y": self.secondary_y,
+			"l": .05 # Left padding to make ylabel fit
+		}]])
 
 		for trace in self.traces:
 			fig.add_trace(trace["line"], secondary_y=trace["secondary"])
@@ -137,7 +149,8 @@ class minmaxplot():
 			showline=True,
 			linecolor='grey',
 			gridcolor='grey',
-			tickcolor='grey'
+			tickcolor='grey',
+			title=self.x_title
 		)
 		fig.update_yaxes(
 			mirror=True,
@@ -146,6 +159,7 @@ class minmaxplot():
 			linecolor='grey',
 			gridcolor='grey',
 			tickcolor='grey',
+			title=self.y_title
 		)
 
 		if self.logscale:
