@@ -76,6 +76,8 @@ def run_v1():
 	indices = time <= pulse_duration
 
 	spectral = minmaxplot("Hz")
+	spectral.ytitle("dB")
+	spectral.xtitle("Частота")
 
 	#
 	# Two of the frequencies are bugged and must be skipped

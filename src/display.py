@@ -57,10 +57,26 @@ class minmaxplot():
 	def reset_color_cycler(self):
 		self.hsl_color_cycler = [] + plotly.colors.qualitative.Plotly + plotly.colors.qualitative.T10 + ["#FF0000"]*90
 
-	def trace(self, time, signal, name=None, hidden=False, error_band=None, dash=None, width=None, secondary=False):
+	def trace(self, time, signal, name=None, hidden=False, error_band=None, markers=None, dash=None, width=None, secondary=False):
+		"""
+		Trace a line
+
+		x			time
+		y			signal
+		name			legend name
+		hidden			initial visibility toggle
+		error_band		tuple of (min, max) for error band polygon
+		markers			force markers on or off, defaults to on for traces with less than 500 points
+		dash			dashed style toggle
+		width			line width for making dashed lines look pretty
+		secondary		right hand side y axis toggle
+		"""
+
 		color = self.hsl_color_cycler.pop(0)
 		r, g, b = plotly.colors.hex_to_rgb(color)
-		samplerate = time.shape[0]
+
+		if not isinstance(markers, bool):
+			markers = len(time) < 500
 
 		plot_signal = plotly.graph_objects.Scatter(
 			x=time,
@@ -68,7 +84,7 @@ class minmaxplot():
 			name=name,
 			line=dict(color=color, dash=dash, width=width), # shape="spline", smoothing=1 slow
 			visible="legendonly" if hidden else True,
-			mode="lines+markers"
+			mode="lines+markers" if markers else "lines"
 		)
 
 		if error_band is None:
@@ -127,7 +143,7 @@ class minmaxplot():
 			    y=1.02,
 			    xanchor="right",
 			    x=1
-		    )
+		    ) if len(self.traces) < 9 else None
 		)
 
 		fig.update_layout(
