@@ -3,6 +3,8 @@ import plotly
 import torch
 import os
 
+from .plotly_custom_html import to_html
+
 style = """
 <style>
 body {
@@ -194,7 +196,7 @@ class minmaxplot():
 			file.write(style)
 			file.write("<main>")
 			file.write(f"<h3>{title}</h3>" if title else "<h3>WAVEFORM</h3>")
-			fig.write_html(file, full_html=False)
+			file.write( to_html(fig, full_html=False) )
 			file.write("</main>")
 
 		os.system("firefox fft_plot.html")
@@ -208,7 +210,7 @@ class page():
 		if fig.title:
 			file.write(f"<h3>{fig.title}</h3>")
 
-		fig.fig().write_html(file, full_html=False)
+		file.write( to_html(fig.fig(), full_html=False) )
 
 	def write_fig_set(self, file, figs):
 		for fig in figs:
@@ -279,7 +281,7 @@ def waveform(time, signal, title=None, error_band=None):
 		file.write(style)
 		file.write("<main>")
 		file.write(f"<h3>{title}</h3>" if title else "<h3>WAVEFORM</h3>")
-		fig_signal.write_html(file, full_html=False)
+		file.write( to_html(fig, full_html=False) )
 		file.write("</main>")
 
 	os.system("firefox fft_plot.html")
@@ -345,11 +347,11 @@ def signal_fft(time, signal, title=None):
 		if title:
 			file.write(f"<h1>{title}</h1>")
 		file.write("<h3>WAVEFORM</h3>")
-		fig_signal.write_html(file, full_html=False)
+		file.write(to_html(fig_signal, full_html=False))
 		file.write("<h3>SPECTRUM</h3>")
-		fig_spectrum.write_html(file, full_html=False)
+		file.write(to_html(fig_spectrum, full_html=False))
 		file.write("<h3>STRENGTH</h3>")
-		fig_amplitude.write_html(file, full_html=False)
+		file.write(to_html(fig_amplitude, full_html=False))
 		file.write("</main>")
 
 	os.system("firefox fft_plot.html")
