@@ -7,6 +7,8 @@
 import uuid
 from pathlib import Path
 import webbrowser
+import base64
+import array
 
 from _plotly_utils.optional_imports import get_module
 from plotly.io._utils import validate_coerce_fig_to_dict, plotly_cdn_url
@@ -27,6 +29,51 @@ _mathjax_config = """\
 if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}\
 </script>"""
 
+#
+# We serialize into JavaScript code, not plain JSON
+#
+
+# Convert trace objects with x and y from arrays to to to
+# Input is:
+# {
+#	"name": "..."
+#	"type": "scatter"
+#	"x": array("f", ...),
+#	"y", array("f", ...)
+# }
+def serialize_data(data):
+	x = data["x"]
+	y = data["y"]
+
+	prefix = "data:application/octet-stream;base64,"
+	data_uri_x = prefix + base64.standard_b64encode( array.array("f", x).tobytes() ).decode()
+	data_uri_y = prefix + base64.standard_b64encode( array.array("f", y).tobytes() ).decode()
+
+	expr_x = f"new Float32Array( await fetch(\"{data_uri_x}\").then( (x) => x.arrayBuffer() ) )"
+	expr_y = f"new Float32Array( await fetch(\"{data_uri_y}\").then( (x) => x.arrayBuffer() ) )"
+
+	class unquoted:
+		def __init__(self, value):
+			self.value = value
+
+		def __str__(self):
+			return self.value
+
+		def __repr__(self):
+			return self.value
+
+	data["x"] = unquoted(expr_x)
+	data["y"] = unquoted(expr_y)
+
+	return "0||" + str(data)
+
+#
+# Produce a JS expression that provides traces
+#
+# Input is:
+# [ {...}, {...}, {...} ]
+def serialize_data_list(data_list):
+	return "[" + ",".join([serialize_data(x) for x in data_list]) + "]"
 
 def to_html(
 	fig,
@@ -147,7 +194,7 @@ def to_html(
 	plotdivid = div_id or str(uuid.uuid4())
 
 	# ## Serialize figure ##
-	jdata = to_json_plotly(fig_dict.get("data", []))
+	jdata = serialize_data_list(fig_dict.get("data", []))
 	jlayout = to_json_plotly(fig_dict.get("layout", {}))
 
 	if fig_dict.get("frames", None):
@@ -240,13 +287,13 @@ def to_html(
 	jconfig = _json.dumps(config)
 
 	script = """\
-				if (document.getElementById("{id}")) {{\
-					Plotly.newPlot(\
-						"{id}",\
-						{data},\
-						{layout},\
-						{config}\
-					){then_addframes}{then_animate}{then_post_script}\
+				if (document.getElementById("{id}")) {{
+					Plotly.newPlot(
+						"{id}",
+						{data},
+						{layout},
+						{config}
+					){then_addframes}{then_animate}{then_post_script}
 				}}""".format(
 		id=plotdivid,
 		data=jdata,
@@ -256,6 +303,8 @@ def to_html(
 		then_animate=then_animate,
 		then_post_script=then_post_script,
 	)
+
+	script = "var True=true; var False=false; async function run(){" + script + "}; run()"
 
 	# ## Handle loading/initializing plotly.js ##
 	include_plotlyjs_orig = include_plotlyjs
