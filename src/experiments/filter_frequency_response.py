@@ -57,17 +57,12 @@ def run_v1():
 		spectrum_c = spectrum_s * spectrum_m
 
 		# Time delay estimation
-		# V3 experimental
-		# + hack to work despite noise
-		f_shift = torch.fft.fftshift( (spectrum_c.angle().diff() - 1) % -torch.pi + 1 )*frames/(2*torch.pi)
+		offset = 1 # [hack] set to 1 for noisy signals
+		f_shift = torch.fft.fftshift( (spectrum_c.angle().diff() - offset) % -torch.pi + offset )*frames/(2*torch.pi)
 		f_indices = torch.where( (spectral_freq >= -band/4) * (spectral_freq <= band/4) )
-		f_shift2 = f_shift[f_indices]
-
-		sample_delay = -f_shift2.mean()
-		print("Delay V3:", sample_delay)
+		sample_delay = -f_shift[f_indices].mean()
 
 		# Time delay elimination
-		# V1 exp(i 2pi k n/N)
 		spectrum_e = spectrum_s * torch.fft.fftshift( dds.timedelay(sample_delay, frames) )
 		signal = torch.fft.ifft(spectrum_e)
 
@@ -159,17 +154,12 @@ def run_v2():
 		spectra_c = spectra_s * spectrum_m
 
 		# Time delay estimation
-		# V3 experimental
-		# + hack to work despite noise
-		f_shift = torch.fft.fftshift( (spectra_c.angle().diff() - 1) % -torch.pi + 1 )*frames/(2*torch.pi)
+		offset = 1 # [hack] set to 1 for noisy signals
+		f_shift = torch.fft.fftshift( (spectra_c.angle().diff() - offset) % -torch.pi + offset )*frames/(2*torch.pi)
 		f_indices, = torch.where( (spectral_freq >= -band/4) * (spectral_freq <= band/4) )
-		f_shift2 = f_shift[:, f_indices]
-
-		sample_delay = -f_shift2.mean(1)
-		print("Delay V3:", sample_delay)
+		sample_delay = -f_shift[:, f_indices].mean(1)
 
 		# Time delay elimination
-		# V1 exp(i 2pi k n/N)
 		spectra_e = spectra_s * torch.fft.fftshift( dds.timedelay(sample_delay[:, None], frames) )
 		signals = torch.fft.ifft(spectra_e)
 
