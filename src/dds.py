@@ -102,13 +102,3 @@ def rotator(phase_offset):
 	phase offset	phase in degrees
 	"""
 	return torch.e**( (phase_offset/180.0*torch.pi) * 1j )
-
-def timedelay(n, samples):
-	"""
-	Time delay in frequency domain helper
-
-	n				delay in samples
-	samples			total number of samples
-	"""
-
-	return torch.exp(1j * torch.arange(samples) * 2 * torch.pi * n / samples)

@@ -3,6 +3,7 @@ import torch
 
 from src.orda import StreamORDA
 from src.display import page, minmaxplot
+import src.delay as delay
 import src.dds as dds
 
 #
@@ -63,7 +64,7 @@ def run_v1():
 		sample_delay = -f_shift[f_indices].mean()
 
 		# Time delay elimination
-		spectrum_e = spectrum_s * torch.fft.fftshift( dds.timedelay(sample_delay, frames) )
+		spectrum_e = spectrum_s * torch.fft.fftshift( delay.delay_in_freq(sample_delay, frames) )
 		signal = torch.fft.ifft(spectrum_e)
 
 		return signal
@@ -160,7 +161,7 @@ def run_v2():
 		sample_delay = -f_shift[:, f_indices].mean(1)
 
 		# Time delay elimination
-		spectra_e = spectra_s * torch.fft.fftshift( dds.timedelay(sample_delay[:, None], frames) )
+		spectra_e = spectra_s * torch.fft.fftshift( delay.delay_in_freq(sample_delay[:, None], frames) )
 		signals = torch.fft.ifft(spectra_e)
 
 		return signals
