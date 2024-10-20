@@ -5,8 +5,6 @@
 #
 
 import uuid
-from pathlib import Path
-import webbrowser
 import base64
 import array
 
@@ -184,8 +182,6 @@ def to_html(
 		Representation of figure as an HTML div string
 	"""
 	from plotly.io.json import to_json_plotly
-
-	print("Plotly hello!!!!")
 
 	# ## Validate figure ##
 	fig_dict = validate_coerce_fig_to_dict(fig, validate)

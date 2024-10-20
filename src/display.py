@@ -1,7 +1,7 @@
 from plotly.subplots import make_subplots
+import webbrowser
 import plotly
 import torch
-import os
 
 from .plotly_custom_html import to_html
 
@@ -191,7 +191,7 @@ class minmaxplot():
 	def show(self, title=""):
 		fig = self.fig()
 
-		with open("fft_plot.html", "w") as file:
+		with open("minmaxplot.html", "w") as file:
 			file.write("<!DOCTYPE html>")
 			file.write(style)
 			file.write("<main>")
@@ -199,7 +199,7 @@ class minmaxplot():
 			file.write( to_html(fig, full_html=False) )
 			file.write("</main>")
 
-		os.system("firefox fft_plot.html")
+		webbrowser.open("minmaxplot.html")
 
 class page():
 	def __init__(self, figs, title=None):
@@ -217,7 +217,7 @@ class page():
 			self.write_fig(file, fig)
 
 	def show(self):
-		with open("fft_plot.html", "w") as file:
+		with open("result.html", "w") as file:
 			file.write("<!DOCTYPE html>")
 			file.write(style)
 			file.write("<main>")
@@ -233,7 +233,7 @@ class page():
 
 			file.write("</main>")
 
-		os.system("firefox fft_plot.html")
+		webbrowser.open("result.html")
 
 def waveform(time, signal, title=None, error_band=None):
 	"""
@@ -276,7 +276,7 @@ def waveform(time, signal, title=None, error_band=None):
 	if samplerate <= 3840:
 		fig_signal.update_traces(line_shape="hv")
 
-	with open("fft_plot.html", "w") as file:
+	with open("waveform.html", "w") as file:
 		file.write("<!DOCTYPE html>")
 		file.write(style)
 		file.write("<main>")
@@ -284,7 +284,7 @@ def waveform(time, signal, title=None, error_band=None):
 		file.write( to_html(fig, full_html=False) )
 		file.write("</main>")
 
-	os.system("firefox fft_plot.html")
+	webbrowser.open("waveform.html")
 
 
 
@@ -354,5 +354,5 @@ def signal_fft(time, signal, title=None):
 		file.write(to_html(fig_amplitude, full_html=False))
 		file.write("</main>")
 
-	os.system("firefox fft_plot.html")
+	webbrowser.open("fft_plot.html")
 
