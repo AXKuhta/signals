@@ -40,6 +40,9 @@ if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.M
 #	"y", array("f", ...)
 # }
 def serialize_data(data):
+	if not "x" in data or not "y" in data:
+		return str(data)
+
 	x = data["x"]
 	y = data["y"]
 
