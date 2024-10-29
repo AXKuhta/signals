@@ -46,6 +46,8 @@ class minmaxplot():
 		self.y_logscale = False
 		self.y_title = None
 		self.x_title = None
+		self.x_range = []
+		self.y_range = []
 		self.x_unit = x_unit
 		self.planar = planar
 		self.title = title
@@ -62,6 +64,12 @@ class minmaxplot():
 
 	def ylogscale(self, enable=True):
 		self.y_logscale = enable
+
+	def xrange(self, range):
+		self.x_range = range
+
+	def yrange(self, range):
+		self.y_range = range
 
 	def reset_color_cycler(self):
 		self.hsl_color_cycler = [] + plotly.colors.qualitative.Plotly + plotly.colors.qualitative.T10 + ["#FF0000"]*90
@@ -143,8 +151,6 @@ class minmaxplot():
 			template=plotly.io.templates["none"],
 			xaxis_ticksuffix=self.x_unit,
 			xaxis_minexponent=2,
-			#xaxis_range=[0, 1.2/1000],
-			#yaxis_range=[-1,1],
 			font=dict( size=24 ),
 			legend=dict(
 				orientation="h",
@@ -186,6 +192,12 @@ class minmaxplot():
 			tickcolor='grey',
 			title=self.y_title
 		)
+
+		if self.x_range:
+			fig.update_layout(xaxis_range=self.x_range)
+
+		if self.y_range:
+			fig.update_layout(yaxis_range=self.y_range)
 
 		if self.y_logscale:
 			fig.update_yaxes(type="log")
