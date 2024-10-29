@@ -6,6 +6,69 @@ from src.display import page, minmaxplot
 import src.delay as delay
 import src.dds as dds
 
+sxbp157_mhz = torch.tensor([
+	#1.0,
+	115.0,
+	131.0,
+	139.0,
+	143.0,
+	146.0,
+	150.0,
+	157.0,
+	164.0,
+	169.0,
+	172.0,
+	178.0,
+	187.0,
+	215.0,
+	#750.0,
+	#1000.0,
+	#1500.0,
+	#2000.0
+])
+
+sxbp157_mean = torch.tensor([
+	#85.08,
+	52.32,
+	30.98,
+	15.86,
+	7.41,
+	3.62,
+	2.44,
+	2.22,
+	2.53,
+	4.80,
+	9.17,
+	18.91,
+	29.82,
+	49.38,
+	#93.83,
+	#83.28,
+	#70.47,
+	#60.88
+])
+
+sxbp157_sigma = torch.tensor([
+	#2.10,
+	0.36,
+	0.35,
+	0.38,
+	0.39,
+	0.21,
+	0.03,
+	0.03,
+	0.04,
+	0.31,
+	0.42,
+	0.32,
+	0.22,
+	0.19,
+	#3.88,
+	#1.86,
+	#0.42,
+	#0.91
+])
+
 #
 # AD9910 sweep calculations
 #
@@ -150,6 +213,14 @@ def run_v1():
 	spectral.trace([164*1000*1000] * 2, [ 3, 0], name="F2")
 	spectral.trace([187*1000*1000] * 2, [20, 0], name="F4")
 	spectral.trace([215*1000*1000] * 2, [40, 0], name="F6")
+
+	x = sxbp157_mhz*1000*1000
+	y = sxbp157_mean
+	upper = sxbp157_mean + 3*sxbp157_sigma
+	lower = sxbp157_mean - 3*sxbp157_sigma
+
+	spectral.hsl_color_cycler.pop(0)
+	spectral.trace(x, y, error_band=(lower, upper), name="SXBP-157+ range")
 
 	disp = page([spectral])
 	disp.show()
