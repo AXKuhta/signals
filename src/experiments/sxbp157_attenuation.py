@@ -149,6 +149,7 @@ def run_v1():
 	indices = (temporal_freq >= -2*1000*1000)*(temporal_freq < 2*1000*1000)
 
 	spectral = minmaxplot("Hz")
+	spectral.xlogscale()
 	spectral.ytitle("dB")
 	spectral.xtitle("Частота")
 
@@ -220,7 +221,7 @@ def run_v1():
 	lower = sxbp157_mean - 3*sxbp157_sigma
 
 	spectral.hsl_color_cycler.pop(0)
-	spectral.trace(x, y, error_band=(lower, upper), name="SXBP-157+ range")
+	spectral.trace(x, y, error_band=(lower, upper), name="SXBP-157+ Datasheet")
 
 	disp = page([spectral])
 	disp.show()
