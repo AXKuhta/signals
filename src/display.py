@@ -39,10 +39,11 @@ class minmaxplot():
 	Supports optional secondary y axis.
 	"""
 
-	def __init__(self, x_unit=None, title="None", logscale=False, secondary_y=False, planar=False):
+	def __init__(self, x_unit=None, title="None", secondary_y=False, planar=False):
 		self.reset_color_cycler()
 		self.secondary_y = secondary_y
-		self.logscale = logscale
+		self.x_logscale = False
+		self.y_logscale = False
 		self.y_title = None
 		self.x_title = None
 		self.x_unit = x_unit
@@ -55,6 +56,12 @@ class minmaxplot():
 
 	def ytitle(self, title):
 		self.y_title = title
+
+	def xlogscale(self, enable=True):
+		self.x_logscale = enable
+
+	def ylogscale(self, enable=True):
+		self.y_logscale = enable
 
 	def reset_color_cycler(self):
 		self.hsl_color_cycler = [] + plotly.colors.qualitative.Plotly + plotly.colors.qualitative.T10 + ["#FF0000"]*90
@@ -180,8 +187,11 @@ class minmaxplot():
 			title=self.y_title
 		)
 
-		if self.logscale:
+		if self.y_logscale:
 			fig.update_yaxes(type="log")
+
+		if self.x_logscale:
+			fig.update_xaxes(type="log")
 
 		if self.planar:
 			fig.update_yaxes(scaleanchor="x")
