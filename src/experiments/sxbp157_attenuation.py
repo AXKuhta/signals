@@ -149,6 +149,7 @@ def run_v1():
 	indices = (temporal_freq >= -2*1000*1000)*(temporal_freq < 2*1000*1000)
 
 	spectral = minmaxplot("Hz")
+	spectral.yrange([0 -2.5, 50 +2.5])
 	spectral.xlogscale()
 	spectral.ytitle("dB")
 	spectral.xtitle("Частота")
