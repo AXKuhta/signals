@@ -1,4 +1,4 @@
-from signals import display, dds, ddc
+from signals import display, dds, ddc, delay
 
 def psk_demo():
 	time = dds.time_series(100, 1)
@@ -99,6 +99,102 @@ def phase_rotation_demo():
 	print("Rotated by:", difference)
 
 	display.signal_fft(time, signal)
+
+def batched_fft_demo():
+	"""
+	A demonstration of batched fft being faster when estimating delay in a number of signals
+	"""
+
+	from random import random
+	from time import time_ns
+	import torch
+
+	torch.set_printoptions(sci_mode=False)
+
+	frames = 1000
+	rate = 1000
+
+	# The model signal is a sweep
+	time = dds.time_series(frames, frames/rate)
+	model_sweep = dds.sweep(time, -80, 80, 0/1000, 400/1000)
+	band = 80
+
+	spectrum_m = torch.fft.fftshift(torch.fft.fft(model_sweep))
+	spectral_freq = torch.linspace(-rate/2, rate/2, frames)
+
+	delays = [i/99 for i in range(100)]
+	delayed_lst = []
+
+	# Produce a number of delayed copies
+	for x in delays:
+		spectrum_d = spectrum_m * delay.delay_in_freq(x, frames).conj()
+		delayed = torch.fft.ifft(torch.fft.fftshift(spectrum_d))
+		delayed_lst.append(delayed)
+
+	spectrum_m = torch.fft.fft(model_sweep.flip(0).roll(1).conj())
+
+	def eliminate_time_delay(signal):
+		spectrum_s = torch.fft.fft(signal)
+		spectrum_c = spectrum_s * spectrum_m
+
+		# Time delay estimation
+		offset = 1 # [hack] set to 1 for noisy signals
+		f_shift = torch.fft.fftshift( (spectrum_c.angle().diff() - offset) % -torch.pi + offset )*frames/(2*torch.pi)
+		f_indices = torch.where( (spectral_freq >= -band/4) * (spectral_freq <= band/4) )
+		sample_delay = -f_shift[f_indices].mean()
+
+		# Time delay elimination
+		spectrum_e = spectrum_s * torch.fft.fftshift( delay.delay_in_freq(sample_delay, frames) )
+		signal = torch.fft.ifft(spectrum_e)
+
+		return sample_delay, signal
+
+
+	def estimate_and_eliminate_time_delay_batch(signals):
+		spectra_s = torch.fft.fft(signals)
+		spectra_c = spectra_s * spectrum_m
+
+		# Time delay estimation
+		offset = 1 # [hack] set to 1 for noisy signals
+		f_shift = torch.fft.fftshift( (spectra_c.angle().diff() - offset) % -torch.pi + offset, dim=1 )*frames/(2*torch.pi)
+		f_indices, = torch.where( (spectral_freq >= -band/4) * (spectral_freq <= band/4) )
+		sample_delay = -f_shift[:, f_indices].mean(1)
+
+		# Time delay elimination
+		spectra_e = spectra_s * torch.fft.fftshift( delay.delay_in_freq(sample_delay[:, None], frames) )
+		signals = torch.fft.ifft(spectra_e)
+
+		return sample_delay, signals
+
+	delays_recov_v1 = []
+
+	start = time_ns()
+	for delayed in delayed_lst:
+		delay_recov, undelayed = eliminate_time_delay(delayed)
+		delays_recov_v1.append(delay_recov)
+	elapsed_v1 = time_ns() - start
+	elapsed_v1 /= 1000*1000
+
+	delays_recov_v1 = torch.hstack(delays_recov_v1)
+
+	start = time_ns()
+	delays_recov_v2, undelayed = estimate_and_eliminate_time_delay_batch(torch.vstack(delayed_lst))
+	elapsed_v2 = time_ns() - start
+	elapsed_v2 /= 1000*1000
+
+	delays = torch.tensor(delays).double()
+
+	print(delays)
+	print(delays_recov_v1)
+	print(delays_recov_v2)
+
+	# Verify that the results match and are close to actual delay
+	assert torch.all( torch.isclose(delays, delays_recov_v1) )
+	assert torch.all( torch.isclose(delays, delays_recov_v2) )
+
+	print(f"Elapsed v1: {elapsed_v1:.3f} ms")
+	print(f"Elapsed v2: {elapsed_v2:.3f} ms")
+
 
 def filter_demo():
 	samplerate = 5*1000*1000
