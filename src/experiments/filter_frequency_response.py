@@ -156,7 +156,7 @@ def run_v2():
 
 		# Time delay estimation
 		offset = 1 # [hack] set to 1 for noisy signals
-		f_shift = torch.fft.fftshift( (spectra_c.angle().diff() - offset) % -torch.pi + offset )*frames/(2*torch.pi)
+		f_shift = torch.fft.fftshift( (spectra_c.angle().diff() - offset) % -torch.pi + offset, dim=1 )*frames/(2*torch.pi)
 		f_indices, = torch.where( (spectral_freq >= -band/4) * (spectral_freq <= band/4) )
 		sample_delay = -f_shift[:, f_indices].mean(1)
 
