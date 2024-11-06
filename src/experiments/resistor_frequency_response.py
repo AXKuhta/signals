@@ -2,6 +2,7 @@
 import torch
 
 from src.orda import StreamORDA
+from src.touchstone import S2PFile
 from src.display import page, minmaxplot
 import src.delay as delay
 import src.dds as dds
@@ -17,14 +18,27 @@ def ad9910_sweep_bandwidth(a, b, duration=900/1000/1000, sysclk=1000*1000*1000):
 
 	return a * fstep * (steps - 1)
 
+"""
+Resistor box:
+
+         +--10K-+
+IN --+---+      +---+-- OUT
+     |   +--1K--+   |
+    50 ohms        50 ohms
+     |              |
+    GND            GND
+"""
 def run_v1():
+	fname_ddc = "cal_2024_10_23/20241023_054128_000_0000_003_000.ISE"
+	fname_box = "cal_2024_10_29/20241029_060435_000_0000_003_000.ISE"
+
 	#
 	# Load all captures
 	#
-	with open("cal_2024_10_23/20241023_054128_000_0000_003_000.ISE", "rb") as f:
+	with open(fname_ddc, "rb") as f:
 		captures_ref = StreamORDA(f).all_captures()
 
-	with open("cal_2024_10_29/20241029_060435_000_0000_003_000.ISE", "rb") as f:
+	with open(fname_box, "rb") as f:
 		captures_dut = StreamORDA(f).all_captures()
 
 	#
@@ -70,6 +84,7 @@ def run_v1():
 		return signal
 
 	indices = time <= pulse_duration
+	indices = (temporal_freq >= -2*1000*1000)*(temporal_freq < 2*1000*1000)
 
 	spectral = minmaxplot("Hz")
 	spectral.yrange([-50, 50])
@@ -77,9 +92,14 @@ def run_v1():
 	spectral.xtitle("Частота")
 
 	#
-	# Two of the frequencies are bugged and must be skipped
+	# 0 Hz must be skipped
 	#
-	freq_set = freqs_ref - set( [0, 100*1000*1000] )
+	freq_set = freqs_ref - set( [0] )
+
+	lst_x = []
+	lst_y = []
+	lst_lower = []
+	lst_upper = []
 
 	#
 	# Do one at a time
@@ -93,6 +113,7 @@ def run_v1():
 		b = [eliminate_time_delay(x.iq) for x in dut]
 		c = torch.vstack( [ v.abs() / u.abs() for u, v in zip(a, b) ] )
 
+
 		mampl = c.mean(0)
 		lower, _ = c.min(0)
 		upper, _ = c.max(0)
@@ -101,12 +122,33 @@ def run_v1():
 		lower = 20*torch.log10(lower)
 		upper = 20*torch.log10(upper)
 
-		print(freq)
-
 		x = temporal_freq[indices] + freq
 		y = mampl[indices]
 
-		spectral.trace(x, y, error_band=(lower[indices], upper[indices]), name=f"{freq/1000/1000}MHz")
+		lower = lower[indices]
+		upper = upper[indices]
+
+		#spectral.trace(x, y, error_band=(lower, upper), name=f"{freq/1000/1000} MHz")
+
+		lst_x.append(x)
+		lst_y.append(y)
+		lst_lower.append(lower)
+		lst_upper.append(upper)
+
+	x = torch.hstack(lst_x)
+	y = torch.hstack(lst_y)
+	lower = torch.hstack(lst_lower)
+	upper = torch.hstack(lst_upper)
+
+	#spectral.trace(x, y, error_band=(lower, upper), name="Calibrator")
+	spectral.trace(x, y, name="Calibrator")
+
+	fname_vna_box = "VNA/10k_resistor_box_minus_10dbm.s2p"
+
+	with open(fname_vna_box, "rb") as f:
+		vna = S2PFile(f)
+
+	spectral.trace(vna.freqs, 20*torch.log10(vna.s21.abs()), name="VNA")
 
 	disp = page([spectral])
 	disp.show()
