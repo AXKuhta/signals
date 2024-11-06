@@ -2,6 +2,7 @@
 import torch
 
 from src.orda import StreamORDA
+from src.touchstone import S2PFile
 from src.display import page, minmaxplot
 import src.delay as delay
 import src.dds as dds
@@ -90,13 +91,17 @@ def ad9910_sweep_bandwidth(a, b, duration=900/1000/1000, sysclk=1000*1000*1000):
 # https://www.minicircuits.com/pdfs/PHA-13HLN+.pdf
 #
 def run_v1():
+	fname_ddc = "cal_2024_10_29/20241029_074522_000_0000_003_000.ISE" # Feeding signal directly into the DDC
+	fname_box_b = "cal_2024_10_29/20241029_075143_000_0000_003_000.ISE" # Feeding through channel B box
+	fname_box_a = "cal_2024_10_29/20241029_075859_000_0000_003_000.ISE" # Feeding through channel A box
+
 	#
 	# Load all captures
 	#
-	with open("cal_2024_10_29/20241029_074522_000_0000_003_000.ISE", "rb") as f:
+	with open(fname_ddc, "rb") as f:
 		captures_ref = StreamORDA(f).all_captures()
 
-	with open("cal_2024_10_29/20241029_075859_000_0000_003_000.ISE", "rb") as f:
+	with open(fname_box_b, "rb") as f:
 		captures_dut = StreamORDA(f).all_captures()
 
 	#
@@ -149,8 +154,8 @@ def run_v1():
 	indices = (temporal_freq >= -2*1000*1000)*(temporal_freq < 2*1000*1000)
 
 	spectral = minmaxplot("Hz")
-	spectral.yrange([0 -2.5, 50 +2.5])
-	spectral.xlogscale()
+	spectral.yrange([-50, 50])
+	#spectral.xlogscale()
 	spectral.ytitle("dB")
 	spectral.xtitle("Частота")
 
@@ -181,11 +186,11 @@ def run_v1():
 		upper, _ = c.max(0)
 
 		# Gain from PHA-13HLN+
-		amp_gain = 22.5
+		amp_gain = 0 #22.5
 
-		mampl = -10*torch.log10(mampl) + amp_gain
-		lower = -10*torch.log10(lower) + amp_gain
-		upper = -10*torch.log10(upper) + amp_gain
+		mampl = 20*torch.log10(mampl) + amp_gain
+		lower = 20*torch.log10(lower) + amp_gain
+		upper = 20*torch.log10(upper) + amp_gain
 
 		x = temporal_freq[indices] + freq
 		y = mampl[indices]
@@ -206,8 +211,9 @@ def run_v1():
 	upper = torch.hstack(lst_upper)
 
 	#spectral.trace(x, y, error_band=(lower, upper), name="Attenuation")
-	spectral.trace(x, y, name="Attenuation")
+	spectral.trace(x, y, name="Calibrator")
 
+	"""
 	spectral.trace([115*1000*1000] * 2, [40, 0], name="F5")
 	spectral.trace([131*1000*1000] * 2, [20, 0], name="F3")
 	spectral.trace([150*1000*1000] * 2, [ 3, 0], name="F1")
@@ -223,6 +229,15 @@ def run_v1():
 
 	spectral.hsl_color_cycler.pop(0)
 	spectral.trace(x, y, error_band=(lower, upper), name="SXBP-157+ Datasheet")
+	"""
+
+	fname_vna_box_a = "VNA/channel_a_1000pts.s2p"
+	fname_vna_box_b = "VNA/channel_b_1000pts.s2p"
+
+	with open(fname_vna_box_b, "rb") as f:
+		vna = S2PFile(f)
+
+	spectral.trace(vna.freqs, 20*torch.log10(vna.s21.abs()), name="VNA")
 
 	disp = page([spectral])
 	disp.show()

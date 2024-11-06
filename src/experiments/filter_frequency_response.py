@@ -21,10 +21,10 @@ def run_v1():
 	#
 	# Load all captures
 	#
-	with open("20241001_071338_000_0000_003_000.ISE", "rb") as f:
+	with open("cal_2024_10_23/20241023_054128_000_0000_003_000.ISE", "rb") as f:
 		captures_ref = StreamORDA(f).all_captures()
 
-	with open("20241001_072840_000_0000_003_000.ISE", "rb") as f:
+	with open("cal_2024_10_29/20241029_060435_000_0000_003_000.ISE", "rb") as f:
 		captures_dut = StreamORDA(f).all_captures()
 
 	#
@@ -72,6 +72,7 @@ def run_v1():
 	indices = time <= pulse_duration
 
 	spectral = minmaxplot("Hz")
+	spectral.yrange([-50, 50])
 	spectral.ytitle("dB")
 	spectral.xtitle("Частота")
 
@@ -96,9 +97,9 @@ def run_v1():
 		lower, _ = c.min(0)
 		upper, _ = c.max(0)
 
-		mampl = 10*torch.log10(mampl)
-		lower = 10*torch.log10(lower)
-		upper = 10*torch.log10(upper)
+		mampl = 20*torch.log10(mampl)
+		lower = 20*torch.log10(lower)
+		upper = 20*torch.log10(upper)
 
 		print(freq)
 
