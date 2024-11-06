@@ -155,7 +155,7 @@ def run_v1():
 
 	spectral = minmaxplot("Hz")
 	spectral.yrange([-50, 50])
-	#spectral.xlogscale()
+	spectral.xlogscale()
 	spectral.ytitle("dB")
 	spectral.xtitle("Частота")
 
@@ -186,11 +186,11 @@ def run_v1():
 		upper, _ = c.max(0)
 
 		# Gain from PHA-13HLN+
-		amp_gain = 0 #22.5
+		amp_gain = 22.5
 
-		mampl = 20*torch.log10(mampl) + amp_gain
-		lower = 20*torch.log10(lower) + amp_gain
-		upper = 20*torch.log10(upper) + amp_gain
+		mampl = -10*torch.log10(mampl) + amp_gain
+		lower = -10*torch.log10(lower) + amp_gain
+		upper = -10*torch.log10(upper) + amp_gain
 
 		x = temporal_freq[indices] + freq
 		y = mampl[indices]
@@ -213,7 +213,6 @@ def run_v1():
 	#spectral.trace(x, y, error_band=(lower, upper), name="Attenuation")
 	spectral.trace(x, y, name="Calibrator")
 
-	"""
 	spectral.trace([115*1000*1000] * 2, [40, 0], name="F5")
 	spectral.trace([131*1000*1000] * 2, [20, 0], name="F3")
 	spectral.trace([150*1000*1000] * 2, [ 3, 0], name="F1")
@@ -229,7 +228,6 @@ def run_v1():
 
 	spectral.hsl_color_cycler.pop(0)
 	spectral.trace(x, y, error_band=(lower, upper), name="SXBP-157+ Datasheet")
-	"""
 
 	fname_vna_box_a = "VNA/channel_a_1000pts.s2p"
 	fname_vna_box_b = "VNA/channel_b_1000pts.s2p"
@@ -237,7 +235,7 @@ def run_v1():
 	with open(fname_vna_box_b, "rb") as f:
 		vna = S2PFile(f)
 
-	spectral.trace(vna.freqs, 20*torch.log10(vna.s21.abs()), name="VNA")
+	spectral.trace(vna.freqs, -10*torch.log10(vna.s21.abs()) + amp_gain, name="VNA")
 
 	disp = page([spectral])
 	disp.show()
