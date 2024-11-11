@@ -11,23 +11,18 @@ body {
 	font-family: sans-serif;
 }
 
-main > * {
-	border-left: .5rem solid #1abc9c;
-}
-
-main > h3 {
-	border-color: #2c3e50;
-}
-
-main > div {
-	height: 40rem;
+.minmaxplot {
 	break-inside: avoid;
 	break-after: always;
 }
 
-h1, h3 {
-	padding: 0 1rem;
-	margin: 0;
+.plotly_html > div {
+	height: 40rem;
+}
+
+.header, .footer {
+	padding: 1rem 0 1rem 5%;
+	text-align: center;
 }
 </style>
 """
@@ -39,7 +34,7 @@ class minmaxplot():
 	Supports optional secondary y axis.
 	"""
 
-	def __init__(self, x_unit=None, title="None", secondary_y=False, planar=False):
+	def __init__(self, x_unit=None, secondary_y=False, planar=False):
 		self.reset_color_cycler()
 		self.secondary_y = secondary_y
 		self.x_logscale = False
@@ -50,8 +45,15 @@ class minmaxplot():
 		self.y_range = []
 		self.x_unit = x_unit
 		self.planar = planar
-		self.title = title
+		self.header_html = ""
+		self.footer_html = ""
 		self.traces = []
+
+	def header(self, html):
+		self.header_html = html
+
+	def footer(self, html):
+		self.footer_html = html
 
 	def xtitle(self, title):
 		self.x_title = title
@@ -140,7 +142,7 @@ class minmaxplot():
 
 		fig = make_subplots(specs=[[{
 			"secondary_y": self.secondary_y,
-			"l": .05 # Left padding to make ylabel fit
+			"l": 0.05, # Left padding to make ylabel fit
 		}]])
 
 		for trace in self.traces:
@@ -154,11 +156,11 @@ class minmaxplot():
 			font=dict( size=24 ),
 			legend=dict(
 				orientation="h",
-			    yanchor="bottom",
-			    y=1.02,
-			    xanchor="right",
-			    x=1
-		    ) if len(self.traces) < 9 else None
+				yanchor="bottom",
+				y=1.02,
+				xanchor="right",
+				x=1
+			) if len(self.traces) < 9 else None
 		)
 
 		fig.update_layout(
@@ -229,10 +231,13 @@ class page():
 		self.figs = figs
 
 	def write_fig(self, file, fig):
-		if fig.title:
-			file.write(f"<h3>{fig.title}</h3>")
-
+		file.write(f"<div class=\"{fig.__class__.__name__}\">")
+		file.write(f"<div class=\"header\">{fig.header_html}</div>" if fig.header_html else "")
+		file.write(f"<div class=\"plotly_html\">")
 		file.write( to_html(fig.fig(), full_html=False) )
+		file.write("</div>")
+		file.write(f"<div class=\"footer\">{fig.footer_html}</div>" if fig.footer_html else "")
+		file.write("</div>")
 
 	def write_fig_set(self, file, figs):
 		for fig in figs:

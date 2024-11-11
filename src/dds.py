@@ -37,7 +37,7 @@ def sine(time, freq, phase_offset=0.0, offset=0.0, duration=0.0):
 
 	return torch.complex(real, imag)
 
-def sweep(time, f1, f2, offset=0.0, duration=0.0):
+def sweep(time, f1, f2, offset=0.0, duration=0.0, clip=True):
 	"""
 	Produces a sweep
 
@@ -61,9 +61,10 @@ def sweep(time, f1, f2, offset=0.0, duration=0.0):
 	real = torch.cos(base + swp)
 	imag = torch.sin(base + swp)
 
-	clipmask = (offset > time) + (time > (offset + duration))
-	real[clipmask] = 0.0
-	imag[clipmask] = 0.0
+	if clip:
+		clipmask = (offset > time) + (time > (offset + duration))
+		real[clipmask] = 0.0
+		imag[clipmask] = 0.0
 
 	return torch.complex(real, imag)
 

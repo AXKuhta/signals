@@ -79,6 +79,7 @@ def run_v1():
 	spectral = minmaxplot("Hz")
 	spectral.ytitle("Код АЦП")
 	spectral.xtitle("Частота")
+	spectral.footer("Примечание: генератор сигналов создавал непрерывный сигнал, калибратор создавал ЛЧМ импульсы")
 
 	#
 	# 0 Hz must be skipped
