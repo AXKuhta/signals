@@ -28,9 +28,17 @@ def ad9910_sweep_bandwidth(a, b, duration=900/1000/1000, sysclk=1000*1000*1000):
 # https://www.minicircuits.com/pdfs/PHA-13HLN+.pdf
 #
 def run_v1():
+	# AD9910 PCBZ no R43 installed
 	fname_ddc = "cal_2024_10_29/20241029_074522_000_0000_003_000.ISE" # Feeding signal directly into the DDC
 	fname_box_b = "cal_2024_10_29/20241029_075143_000_0000_003_000.ISE" # Feeding through channel B box
 	fname_box_a = "cal_2024_10_29/20241029_075859_000_0000_003_000.ISE" # Feeding through channel A box
+
+	# AD9910 PCBZ with 100 ohms R43 installed
+	# https://ez.analog.com/dds/w/documents/3680/ad9910-evb-r43-resistor-value
+	# https://www.ti.com/lit/an/slaa399/slaa399.pdf
+	fname_ddc = "cal_2024_11_12/20241112_074749_000_0000_003_000.ISE" # Feeding signal directly into the DDC
+	fname_box_b = "cal_2024_11_12/20241112_075337_000_0000_003_000.ISE" # Feeding through channel B box
+	fname_box_a = "cal_2024_11_12/20241112_075025_000_0000_003_000.ISE" # Feeding through channel A box
 
 	#
 	# Load all captures
