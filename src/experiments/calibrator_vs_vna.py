@@ -170,7 +170,7 @@ def run_v1():
 
 	err_y = np.interp(vna_x, x, y) - np.array(vna_y)
 
-	spectral.trace(vna_x, err_y, name="Calibrator error")
+	spectral.trace(vna_x, err_y, name="Calibrator error", hidden=True)
 
 	disp = page([spectral])
 	disp.show()
