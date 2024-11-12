@@ -7,6 +7,8 @@ from src.display import page, minmaxplot
 import src.delay as delay
 import src.dds as dds
 
+import numpy as np
+
 #
 # AD9910 sweep calculations
 #
@@ -161,7 +163,14 @@ def run_v1():
 	with open(fname_vna_box_b, "rb") as f:
 		vna = S2PFile(f)
 
-	spectral.trace(vna.freqs, 20*torch.log10(vna.s21.abs()), name="VNA")
+	vna_x = vna.freqs
+	vna_y = 20*torch.log10( vna.s21.abs() )
+
+	spectral.trace(vna_x, vna_y, name="VNA")
+
+	err_y = np.interp(vna_x, x, y) - np.array(vna_y)
+
+	spectral.trace(vna_x, err_y, name="Calibrator error")
 
 	disp = page([spectral])
 	disp.show()
