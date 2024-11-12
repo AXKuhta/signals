@@ -7,6 +7,8 @@ from src.display import page, minmaxplot
 import src.delay as delay
 import src.dds as dds
 
+import numpy as np
+
 #
 # AD9910 sweep calculations
 #
@@ -29,8 +31,13 @@ IN --+---+      +---+-- OUT
     GND            GND
 """
 def run_v1():
+	# AD9910 PCBZ no R43 installed
 	fname_ddc = "cal_2024_10_23/20241023_054128_000_0000_003_000.ISE"
 	fname_box = "cal_2024_10_29/20241029_060435_000_0000_003_000.ISE"
+
+	# AD9910 PCBZ with 100 ohms R43 installed
+	fname_ddc = "cal_2024_11_12/20241112_052904_000_0000_003_000.ISE"
+	fname_box = "cal_2024_11_12/20241112_053133_000_0000_003_000.ISE"
 
 	#
 	# Load all captures
@@ -90,6 +97,7 @@ def run_v1():
 	spectral.yrange([-50, 50])
 	spectral.ytitle("dB")
 	spectral.xtitle("Частота")
+	spectral.footer("Сравнение калибратора и VNA при измерении резисторного делителя")
 
 	#
 	# 0 Hz must be skipped
@@ -148,7 +156,14 @@ def run_v1():
 	with open(fname_vna_box, "rb") as f:
 		vna = S2PFile(f)
 
-	spectral.trace(vna.freqs, 20*torch.log10(vna.s21.abs()), name="VNA")
+	vna_x = vna.freqs
+	vna_y = 20*torch.log10(vna.s21.abs())
+
+	spectral.trace(vna_x, vna_y, name="VNA")
+
+	err_y = np.interp(vna_x, x, y) - np.array(vna_y)
+
+	spectral.trace(vna_x, err_y, name="Calibrator error", hidden=True)
 
 	disp = page([spectral])
 	disp.show()
