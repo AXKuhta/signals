@@ -38,7 +38,7 @@ class ORDACap:
 		self.samplecount = samplecount
 
 		imag, real = torch.frombuffer(iq_bytes, dtype=torch.int16).view(2, self.samplecount) / 1.0
-		self.iq = torch.complex(real, imag)
+		self.iq = torch.complex(real, imag).to(dtype=torch.complex128)
 
 	@property
 	def basic(self):

@@ -18,6 +18,9 @@ def ad9910_sweep_bandwidth(a, b, duration=900/1000/1000, sysclk=1000*1000*1000):
 	return a * fstep * (steps - 1)
 
 def run_v1():
+	fname_ddc = "cal_2024_10_23/20241023_052834_000_0000_003_000.ISE" # Feeding signal directly into the DDC
+	fname_box_b = "cal_2024_10_29/20241029_075143_000_0000_003_000.ISE" # Feeding through channel B box
+
 	"""
 	Testing the DDC accross a wide range of frequencies and signal levels
 
@@ -25,10 +28,12 @@ def run_v1():
 	cal_2024_10_29/20241029_062948_000_0000_003_000.ISE	Tones from a signal generator (200 mV)
 	"""
 
+	fname_ddc = "cal_2024_11_12/20241112_052904_000_0000_003_000.ISE"
+
 	#
 	# Load all captures
 	#
-	with open("cal_2024_10_23/20241023_052834_000_0000_003_000.ISE", "rb") as f:
+	with open(fname_ddc, "rb") as f:
 		sweeps = StreamORDA(f).all_captures()
 
 	with open("cal_2024_10_29/20241029_062948_000_0000_003_000.ISE", "rb") as f:
@@ -99,12 +104,12 @@ def run_v1():
 		a = [x.iq.abs().mean() for x in caps]
 		b = torch.vstack(a)
 
-		mampl = b.mean(0)
+		mampl = b.mean(0) * .7
 		lower, _ = b.min(0)
 		upper, _ = b.max(0)
 
 		tone_x.append(freq)
-		tone_y.append(b[0][0])
+		tone_y.append(mampl[0])
 
 	spectral.trace(tone_x, tone_y, name=f"Signal generator")
 
@@ -119,11 +124,20 @@ def run_v1():
 		caps = filter(filter_fn, sweeps)
 
 		a = [eliminate_time_delay(x.iq) for x in caps]
+		#a = [x.iq for x in caps]
 		b = torch.vstack([x.abs() for x in a])
 
 		mampl = b.mean(0)
 		lower, _ = b.min(0)
 		upper, _ = b.max(0)
+
+		#t = minmaxplot("s")
+		#t.xtitle("Время")
+		#t.ytitle("Код АЦП")
+		#t.trace(time, mampl)
+		#p = page([t])
+		#p.show()
+		#input()
 
 		x.append( temporal_freq[indices] + freq )
 		y.append( mampl[indices] )
