@@ -91,7 +91,7 @@ def run_v1():
 	spectral = minmaxplot("Hz")
 	spectral.ytitle("Радианы")
 	spectral.xtitle("Частота")
-	spectral.footer("Сравнение калибратора и VNA при измерении ФЧХ одного из усилителей в ВУПе<br>Использованы два канала DDC - один для опорного сигнала, второй для сигнала после усилителя<br>Не учтена длина проводов")
+	spectral.footer("Сравнение калибратора и VNA при измерении ФЧХ одного из усилителей в ВУПе<br>Использованы два канала DDC - один для опорного сигнала, второй для сигнала после усилителя<br>Провода учтены")
 
 
 	#
@@ -111,14 +111,20 @@ def run_v1():
 		inpt_filter_fn = lambda x: x.center_freq == freq and x.channel_number == 3
 		thru_filter_fn = lambda x: x.center_freq == freq and x.channel_number == 1
 
-		inpt = filter(inpt_filter_fn, captures_dut)
-		thru = filter(thru_filter_fn, captures_dut)
+		ref_inpt = filter(inpt_filter_fn, captures_ref)
+		ref_thru = filter(thru_filter_fn, captures_ref)
+		dut_inpt = filter(inpt_filter_fn, captures_dut)
+		dut_thru = filter(thru_filter_fn, captures_dut)
 
-		a = [ x.iq for x in inpt ]
-		b = [ x.iq for x in thru ]
-		c = torch.vstack( [ v*u.conj() for u, v in zip(a, b) ] )
+		a = [ x.iq for x in ref_inpt ]
+		b = [ x.iq for x in ref_thru ]
+		delta_phi_ref = torch.vstack( [ v*u.conj() for u, v in zip(a, b) ] ).mean(0)
 
-		phase = (c.mean(0) * dds.rotator(180)).angle()
+		a = [ x.iq for x in dut_inpt ]
+		b = [ x.iq for x in dut_thru ]
+		delta_phi_dut = torch.vstack( [ v*u.conj() for u, v in zip(a, b) ] ).mean(0)
+
+		phase = (delta_phi_dut * delta_phi_ref.conj()).angle()
 
 		x = temporal_freq[indices] + freq
 		y = phase[indices]
