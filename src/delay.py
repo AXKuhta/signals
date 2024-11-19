@@ -12,12 +12,15 @@ def delay_in_freq(n, samples):
 
 class ConvDelayEstimator():
 	"""
-	General purpose delay estimation for any kind of signal
+	A general purpose delay estimator for any kind of signal
 
 	Steps:
 	- Performing a convolution using FFT
 	- Fitting a curve using least squares method
 	- Finding the peak of the curve
+
+	Parameters:
+	model_signal		iq of reference signal with no delay
 	"""
 
 	def __init__(self, model_signal):
@@ -42,5 +45,30 @@ class ConvDelayEstimator():
 		# 2bx = -a
 		# x = -a/(2b)
 		sample_delay = -a / 2 / b
+
+		return sample_delay
+
+class SpectralDelayEstimator():
+	"""
+	A delay estimator that relies on the fact that delay in time
+	is equivelent to multiplication by exp(i omega tau) in frequency
+
+	Parameters:
+	model_signal		iq of reference signal with no delay
+	indices_allow		indices of non-marginal spectral content
+	"""
+
+	def __init__(self, model_signal, indices_allow):
+		self.spectrum_m = torch.fft.fft(model_signal.flip(0).roll(1).conj())
+		self.frames = model_signal.shape[0]
+		self.indices_allow = indices_allow
+
+	def estimate(self, signal):
+		spectrum_s = torch.fft.fft(signal)
+		spectrum_c = spectrum_s * self.spectrum_m
+
+		offset = 1 # [hack] set to 1 for noisy signals
+		tau = torch.fft.fftshift( (spectrum_c.angle().diff() - offset) % -torch.pi + offset )*self.frames/(2*torch.pi)
+		sample_delay = -tau[self.indices_allow].mean()
 
 		return sample_delay
