@@ -63,12 +63,23 @@ class SpectralDelayEstimator():
 		self.frames = model_signal.shape[0]
 		self.indices_allow = indices_allow
 
-	def estimate(self, signal):
+	def estimate_old(self, signal):
 		spectrum_s = torch.fft.fft(signal)
 		spectrum_c = spectrum_s * self.spectrum_m
 
 		offset = 1 # [hack] set to 1 for noisy signals
 		tau = torch.fft.fftshift( (spectrum_c.angle().diff() - offset) % -torch.pi + offset )*self.frames/(2*torch.pi)
+		sample_delay = -tau[self.indices_allow].mean()
+
+		return sample_delay
+
+	def estimate(self, signal):
+		spectrum_s = torch.fft.fft(signal)
+		spectrum_c = spectrum_s * self.spectrum_m
+
+		shifted = torch.fft.fftshift(spectrum_c)
+		diff = shifted * shifted.roll(1).conj()
+		tau = diff.angle() * self.frames / (2*torch.pi)
 		sample_delay = -tau[self.indices_allow].mean()
 
 		return sample_delay
