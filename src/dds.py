@@ -28,17 +28,16 @@ def sine(time, freq, phase_offset=0.0, offset=0.0, duration=0.0):
 	If duration is 0.0, then time[-1] is used as duration, filling the entire span of time
 	"""
 
-	real = torch.cos(freq*2*torch.pi*time + phase_offset/180.0*torch.pi)
-	imag = torch.sin(freq*2*torch.pi*time + phase_offset/180.0*torch.pi)
+	phase = freq*2*torch.pi*time + phase_offset/180.0*torch.pi
+	signal = torch.exp(1j * phase)
 
 	if duration:
 		assert time[0] == 0, "Please supply time with 0 at origin"
 		assert duration % time[1] < 1e-10, f"Please supply duration that is divisible by dt"
 		mask = roll_lerp( (time<duration)*1, offset/time[1] )
-		real *= mask
-		imag *= mask
+		signal *= mask
 
-	return torch.complex(real, imag)
+	return signal
 
 def sweep(time, f1, f2, offset=0.0, duration=0.0, clip=True):
 	"""
@@ -61,17 +60,16 @@ def sweep(time, f1, f2, offset=0.0, duration=0.0, clip=True):
 	base = f1*2*torch.pi*x
 	swp = delta*torch.pi*x*x / duration
 
-	real = torch.cos(base + swp)
-	imag = torch.sin(base + swp)
+	phase = base + swp
+	signal = torch.exp(1j * phase)
 
 	if clip:
 		assert time[0] == 0, "Please supply time with 0 at origin"
 		assert duration % time[1] < 1e-10, f"Please supply duration that is divisible by dt"
 		mask = roll_lerp( (time<duration)*1, offset/time[1] )
-		real *= mask
-		imag *= mask
+		signal *= mask
 
-	return torch.complex(real, imag)
+	return signal
 
 def psk(time, freq, code = [0, 0, 1, 0, 1]):
 	"""
