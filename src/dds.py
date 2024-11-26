@@ -1,5 +1,7 @@
 import torch
 
+from .misc import roll_lerp
+
 def time_series(samplerate, duration):
 	"""
 	Produces a time series, e.g.:
@@ -29,11 +31,12 @@ def sine(time, freq, phase_offset=0.0, offset=0.0, duration=0.0):
 	real = torch.cos(freq*2*torch.pi*time + phase_offset/180.0*torch.pi)
 	imag = torch.sin(freq*2*torch.pi*time + phase_offset/180.0*torch.pi)
 
-	duration = duration if duration else time[-1]
-
-	clipmask = (offset > time) + (time >= (offset + duration))
-	real[clipmask] = 0.0
-	imag[clipmask] = 0.0
+	if duration:
+		assert time[0] == 0, "Please supply time with 0 at origin"
+		assert duration % time[1] < 1e-10, f"Please supply duration that is divisible by dt"
+		mask = roll_lerp( (time<duration)*1, offset/time[1] )
+		real *= mask
+		imag *= mask
 
 	return torch.complex(real, imag)
 
@@ -62,9 +65,11 @@ def sweep(time, f1, f2, offset=0.0, duration=0.0, clip=True):
 	imag = torch.sin(base + swp)
 
 	if clip:
-		clipmask = (offset > time) + (time >= (offset + duration))
-		real[clipmask] = 0.0
-		imag[clipmask] = 0.0
+		assert time[0] == 0, "Please supply time with 0 at origin"
+		assert duration % time[1] < 1e-10, f"Please supply duration that is divisible by dt"
+		mask = roll_lerp( (time<duration)*1, offset/time[1] )
+		real *= mask
+		imag *= mask
 
 	return torch.complex(real, imag)
 
