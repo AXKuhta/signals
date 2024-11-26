@@ -31,7 +31,7 @@ def sine(time, freq, phase_offset=0.0, offset=0.0, duration=0.0):
 
 	duration = duration if duration else time[-1]
 
-	clipmask = (offset > time) + (time > (offset + duration))
+	clipmask = (offset > time) + (time >= (offset + duration))
 	real[clipmask] = 0.0
 	imag[clipmask] = 0.0
 
@@ -62,7 +62,7 @@ def sweep(time, f1, f2, offset=0.0, duration=0.0, clip=True):
 	imag = torch.sin(base + swp)
 
 	if clip:
-		clipmask = (offset > time) + (time > (offset + duration))
+		clipmask = (offset > time) + (time >= (offset + duration))
 		real[clipmask] = 0.0
 		imag[clipmask] = 0.0
 
