@@ -26,3 +26,34 @@ def roll_lerp(x, shift):
 	w = shift - a
 
 	return torch.lerp(u, v, w)
+
+#
+# Parses expressions like 1000*1000*1000 or 1/1000/1000
+#
+def parse_numeric_expr(expr):
+	token = []
+	tokens = []
+
+	for c in expr:
+		if c in "*/":
+			tokens.append( "".join(token) )
+			tokens.append(c)
+			token = []
+		else:
+			token.append(c)
+
+	tokens.append( "".join(token) )
+	acc = float( tokens.pop(0) )
+
+	while len(tokens):
+		operator = tokens.pop(0)
+		operand = float( tokens.pop(0) )
+
+		if operator == "*":
+			acc = acc * operand
+		elif operator == "/":
+			acc = acc / operand
+		else:
+			assert 0, f"unknown operator {operator}"
+
+	return acc
