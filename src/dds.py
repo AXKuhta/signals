@@ -34,7 +34,7 @@ def sine(time, freq, phase_offset=0.0, offset=0.0, duration=0.0):
 	if duration:
 		assert time[0] == 0, "Please supply time with 0 at origin"
 		assert duration % time[1] < 1e-10, f"Please supply duration that is divisible by dt"
-		mask = roll_lerp( (time<duration)*1, offset/time[1] )
+		mask = roll_lerp( (time<duration)*1.0, offset/time[1] )
 		signal *= mask
 
 	return signal
@@ -66,7 +66,7 @@ def sweep(time, f1, f2, offset=0.0, duration=0.0, clip=True):
 	if clip:
 		assert time[0] == 0, "Please supply time with 0 at origin"
 		assert duration % time[1] < 1e-10, f"Please supply duration that is divisible by dt"
-		mask = roll_lerp( (time<duration)*1, offset/time[1] )
+		mask = roll_lerp( (time<duration)*1.0, offset/time[1] )
 		signal *= mask
 
 	return signal

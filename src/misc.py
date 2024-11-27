@@ -25,8 +25,4 @@ def roll_lerp(x, shift):
 	v = x.roll(b)
 	w = shift - a
 
-	return torch.lerp(
-		u.double(),
-		v.double(),
-		w
-	)
+	return torch.lerp(u, v, w)
