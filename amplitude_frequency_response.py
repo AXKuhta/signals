@@ -58,10 +58,10 @@ def run_v1(fname_ref, fname_dut, a, b, pulse_duration, retain, sysclk):
 	indices = (temporal_freq >= -retain/2)*(temporal_freq < +retain/2)
 
 	#
-	# Reuse the indices for delay estimation
-	# Retained strecth bound to have non-marginal spectral content
+	# A narrower stretch for delay estimation to achieve better accuracy
 	#
-	est = SpectralDelayEstimator(model_sweep, indices)
+	indices_est = (temporal_freq >= -retain/3)*(temporal_freq < +retain/3)
+	est = SpectralDelayEstimator(model_sweep, indices_est)
 
 	#
 	# 0 Hz must be skipped
@@ -70,7 +70,16 @@ def run_v1(fname_ref, fname_dut, a, b, pulse_duration, retain, sysclk):
 
 	def eliminate_time_delay(signal):
 		sample_delay = est.estimate(signal)
-		return roll_lerp(signal, -sample_delay)
+
+		# Lerp amplitude and phase specifically
+		# Not real/imag
+		mags = signal.abs()
+		angs = signal.angle()
+
+		mags = roll_lerp(mags, -sample_delay)
+		angs = roll_lerp(angs, -sample_delay)
+
+		return mags * torch.exp(1j * angs)
 
 	#
 	# Do one at a time
