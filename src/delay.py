@@ -77,9 +77,24 @@ class SpectralDelayEstimator():
 		spectrum_s = torch.fft.fft(signal)
 		spectrum_c = spectrum_s * self.spectrum_m
 
+
 		shifted = torch.fft.fftshift(spectrum_c)
 		diff = shifted * shifted.roll(1).conj()
 		tau = diff.angle() * self.frames / (2*torch.pi)
 		sample_delay = -tau[self.indices_allow].mean()
+
+		def visual_debug():
+			from .display import minmaxplot, page
+
+			rate = 5*1000*1000
+			freqs = torch.linspace(-rate/2, rate/2, 8192)
+
+			spectral = minmaxplot("Hz")
+			spectral.trace(freqs[self.indices_allow], tau[self.indices_allow])
+			disp = page([spectral])
+			disp.show()
+			input()
+
+		#visual_debug()
 
 		return sample_delay
