@@ -10,7 +10,8 @@ import src.dds as dds
 
 import src.display as display
 
-def run_v1(fname="cal_2025_02_20/20250220_083425_000_0000_003_000.ISE", a=10, b=1, pulse_duration=900/1000/1000, retain=500*1000, sysclk=1000*1000*1000):
+#def run_v1(fname="cal_2025_02_20/20250220_083425_000_0000_003_000.ISE", a=10, b=1, pulse_duration=900/1000/1000, retain=500*1000, sysclk=1000*1000*1000):
+def run_v1(fname="cal_2025_02_21/20250221_031655_000_0000_003_000.ISE", a=10, b=1, pulse_duration=900/1000/1000, retain=500*1000, sysclk=1000*1000*1000):
 	#
 	# Load all captures
 	#
@@ -56,11 +57,16 @@ def run_v1(fname="cal_2025_02_20/20250220_083425_000_0000_003_000.ISE", a=10, b=
 
 	spectral = display.minmaxplot("Hz")
 	spectral.xtitle("Частота")
-	spectral.ytitle("Радианы")
+	spectral.ytitle("Градусы")
 	spectral.header("Разность фаз между каналами ВУПа (B - A)")
 
 	all_x = []
 	all_y = []
+
+	sparse_x = []
+	sparse_y = []
+
+	RAD2DEG = 180.0/torch.pi
 
 	#
 	# Do one at a time
@@ -74,11 +80,21 @@ def run_v1(fname="cal_2025_02_20/20250220_083425_000_0000_003_000.ISE", a=10, b=
 
 		a = [x.iq for x in ch_a]
 		b = [x.iq for x in ch_b]
-		c = torch.vstack( [ (v * u.conj()).angle() for u, v in zip(a, b) ] )
+		c = torch.vstack( [ v * u.conj() for u, v in zip(a, b) ] )
+		d = c.angle()
 
-		mampl = c.mean(0)
-		lower, _ = c.min(0)
-		upper, _ = c.max(0)
+		# Continuous but fuzzy estimation
+		# Taken at each point
+		mampl = d.mean(0)
+		lower, _ = d.min(0)
+		upper, _ = d.max(0)
+
+		# Sparse (discontinuous) but certain estimation
+		# Represents center frequency
+		scalar_phase_diff = c.sum(1).angle().mean(0)
+
+		sparse_x.append(freq)
+		sparse_y.append(scalar_phase_diff * RAD2DEG)
 
 		# Estimate delay
 		# Delay between channel 1 and channel 3 is essentially the same in samples
@@ -98,12 +114,13 @@ def run_v1(fname="cal_2025_02_20/20250220_083425_000_0000_003_000.ISE", a=10, b=
 		#spectral.trace(x, y, name=f"Fc = {freq/1000/1000:.2f} MHz")
 
 	x = torch.hstack(all_x)
-	y = torch.hstack(all_y)
+	y = torch.hstack(all_y) * RAD2DEG
 	_, indices = torch.sort(x)
 	x = x[indices]
 	y = y[indices]
 
 	spectral.trace(x, y)
+	spectral.trace(sparse_x, sparse_y)
 
 	z = display.page([spectral])
 	z.show()
