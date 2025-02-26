@@ -10,8 +10,7 @@ import src.dds as dds
 
 import src.display as display
 
-#def run_v1(fname="cal_2025_02_20/20250220_083425_000_0000_003_000.ISE", a=10, b=1, pulse_duration=900/1000/1000, retain=500*1000, sysclk=1000*1000*1000):
-def run_v1(fname="cal_2025_02_21/20250221_031655_000_0000_003_000.ISE", a=10, b=1, pulse_duration=900/1000/1000, retain=500*1000, sysclk=1000*1000*1000):
+def run_v1(fname, spectral, a=10, b=1, pulse_duration=900/1000/1000, retain=500*1000, sysclk=1000*1000*1000):
 	#
 	# Load all captures
 	#
@@ -54,11 +53,6 @@ def run_v1(fname="cal_2025_02_21/20250221_031655_000_0000_003_000.ISE", a=10, b=
 	# 0 Hz must be skipped
 	#
 	freq_set = freqs - set( [0] )
-
-	spectral = display.minmaxplot("Hz")
-	spectral.xtitle("Частота")
-	spectral.ytitle("Градусы")
-	spectral.header("Разность фаз между каналами ВУПа (B - A)")
 
 	all_x = []
 	all_y = []
@@ -119,8 +113,24 @@ def run_v1(fname="cal_2025_02_21/20250221_031655_000_0000_003_000.ISE", a=10, b=
 	x = x[indices]
 	y = y[indices]
 
-	spectral.trace(x, y)
-	spectral.trace(sparse_x, sparse_y)
+	spectral.trace(x, y, name="Метод 1")
+	spectral.trace(sparse_x, sparse_y, name="Метод 2")
+
+def run_v2():
+	spectral = display.minmaxplot("Hz")
+	spectral.xtitle("Частота")
+	spectral.ytitle("Градусы")
+	spectral.header("Разность фаз между каналами ВУПа (B - A)")
+
+	#run_v1("cal_2025_02_25/20250225_030146_000_0000_003_000.ISE", spectral)
+	#run_v1("cal_2025_02_25/20250225_030635_000_0000_003_000.ISE", spectral)
+
+	#run_v1("cal_2025_02_25/20250225_042408_000_0000_003_000.ISE", spectral)
+	#run_v1("cal_2025_02_25/20250225_042938_000_0000_003_000.ISE", spectral)
+
+	run_v1("cal_2025_02_21/a_to_1_b_to_3.ISE", spectral)
+	#run_v1("cal_2025_02_21/a_to_3_b_to_1.ISE", spectral)
+
 
 	z = display.page([spectral])
 	z.show()
