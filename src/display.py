@@ -143,6 +143,7 @@ class minmaxplot():
 		fig = make_subplots(specs=[[{
 			"secondary_y": self.secondary_y,
 			"l": 0.05, # Left padding to make ylabel fit
+			"b": 0.06, # Bottom padding to make xlabel fit with diagonal ticklabels
 		}]])
 
 		for trace in self.traces:
