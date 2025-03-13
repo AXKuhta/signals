@@ -13,7 +13,6 @@ from src.orda import StreamORDA
 import src.delay as delay
 import src.dds as dds
 
-
 class DDCSettingsV1(Model):
 	config_dir = Field(str)
 	samplerate = Field(str)
@@ -24,18 +23,18 @@ class SignalV1(Model):
 	level = Field(str)
 	emit = Field(str)
 
-class DDCAndCalibratorV1SignalModel():
+	# Not a self-contained entity
+	# Dependent on context
+	# Hence not reusable
+	est = None
+	time = None
 	delay = None
 	duration = None
-
-	time = None
-	iq = None
-	est = None
-
 	temporal_freq = None
 	spectral_freq = None
 
-	temporal_indices = None
+	# From FrequencyResponsePoints perspective, the class hierarchy needs to be inverted
+	# The master object is SignalV1, not preset
 
 	def eliminate_delay(self, iq):
 		"""
@@ -85,8 +84,6 @@ class DDCAndCalibratorV1(Model):
 
 		capture_duration = frames / rate
 
-		models = []
-
 		# Modelling as DDC would have it
 		# TODO: Extract a set of parameters that matter, prep only that, propagate
 		for signal in self.signals:
@@ -122,6 +119,8 @@ class DDCAndCalibratorV1(Model):
 				# - Sweeps have SpectralDelayEstimator - which assumes contiguous indices_est
 				# - Pulses have ConvDelayEstimator
 
+				# Establish the frequencies at truncated head/tail
+				# TODO: support off-center tuning
 				start = duration*trim + delay
 				stop = duration*(1-trim) + delay
 
@@ -133,20 +132,14 @@ class DDCAndCalibratorV1(Model):
 				indices_est = (spectral_freq >= min_freq)*(spectral_freq < max_freq)
 				est = SpectralDelayEstimator(model_sweep, indices_est)
 
-				model = DDCAndCalibratorV1SignalModel()
-
-				model.est = est
-				model.temporal_freq = temporal_freq
-				model.temporal_indices = temporal_indices
-
-				models.append(model)
+				signal.est = est
+				signal.time = time
+				signal.delay = delay
+				signal.duration = duration
+				signal.temporal_freq = temporal_freq
+				signal.spectral_freq = spectral_freq
 			else:
 				assert 0
-
-		self.models = models
-
-		print(len(self.models), "models initialized")
-
 
 def parse_time_expr(expr, into="s"):
 	inv_factors = {
@@ -254,7 +247,7 @@ class FrequencyResponsePointsV1:
 	Application class to translate a folder of captures+metadata into frequency response points (x, y)
 	"""
 
-	def __init__(self, location):
+	def __init__(self, location, trim=0.05):
 		with open(f"{location}/preset.json") as f:
 			obj = json.load(f)
 
@@ -290,7 +283,7 @@ class FrequencyResponsePointsV1:
 		# Onto the actual processing
 		# Delay elimination + amplitude + averaging
 		#################################################################################################
-		for i, (signal, model) in enumerate(zip(preset.signals, preset.models)):
+		for i, signal in enumerate(preset.signals):
 			for channel in chan_set:
 				filter_fn = lambda x: x.trigger_number % len(preset.signals) == i and x.channel_number == channel
 
@@ -298,16 +291,20 @@ class FrequencyResponsePointsV1:
 
 				assert all([x.center_freq == parse_freq_expr(signal.tune) for x in repeats])
 
-				a = [model.eliminate_delay(x.iq) for x in repeats]
+				a = [signal.eliminate_delay(x.iq) for x in repeats]
 				a = torch.vstack(a).abs()
 
 				mampl = a.mean(0)
 				lower, _ = a.min(0)
 				upper, _ = a.max(0)
 
-				indices = model.temporal_indices
+				# Crop the pulse
+				start = signal.duration*trim + signal.delay
+				stop = signal.duration*(1-trim) + signal.delay
 
-				x = model.temporal_freq[indices] + parse_freq_expr(signal.tune)
+				indices = (signal.time >= start) * (signal.time < stop)
+
+				x = signal.temporal_freq[indices] + parse_freq_expr(signal.tune)
 				y = mampl[indices]
 
 				lower = lower[indices]
