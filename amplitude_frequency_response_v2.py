@@ -24,25 +24,128 @@ class SignalV1(Model):
 	level = Field(str)
 	emit = Field(str)
 
-	est = None
-	time = None
-	model = None
+class DDCAndCalibratorV1SignalModel():
 	delay = None
 	duration = None
+
+	time = None
+	iq = None
+	est = None
+
 	temporal_freq = None
 	spectral_freq = None
+
 	temporal_indices = None
 
-	# Could we have model signal coalescing/materialization here?
-	# - Need samplerate/frames
+	def eliminate_delay(self, iq):
+		"""
+		Remove time delay from a capture
+
+		TODO: shoud this actually be "fit()"?
+		"""
+		sample_delay = self.est.estimate(iq)
+
+		# Use simple roll for now
+		return iq.roll( round(-sample_delay.item()) )
 
 class DDCAndCalibratorV1(Model):
 	ddc = Field(DDCSettingsV1)
 	signals = Field([SignalV1])
 
-	# Modelling should really be here
-	# It needs both ddc and signals-
-	# and both are available here
+	# Signals have associated models
+	#
+	# We cannot:
+	# - Have SignalV1.model() - lack required information
+	#
+	# We can:
+	# - Have SubclassSignalV1.model()
+	#	- Disadvantage: lacks context
+	#		- Most signals the same
+	#		- Duplicate work
+	# - Have modelling happen here
+	#	- Where do the results go?
+	# 		- Late init attributes in SignalV1
+	# 		- Distinct DDCAndCalibratorV1SignalModel
+	#
+	# Sticking to distinct object
+	models = None
+
+	def init_models(self, trim=0.05):
+		"""
+		Walks the signal list in the preset and prepares a model signal as DDC would have it
+
+		trim	Portion of pulse head+tail to be discarded so as to remove transients
+			Default: 0.05
+		"""
+
+		sysclk = parse_freq_expr("1 GHz")
+
+		rate = parse_freq_expr(self.ddc.samplerate)
+		frames = self.ddc.frames
+
+		capture_duration = frames / rate
+
+		models = []
+
+		# Modelling as DDC would have it
+		# TODO: Extract a set of parameters that matter, prep only that, propagate
+		for signal in self.signals:
+			tokens = signal.emit.split(" ")
+
+			if tokens[0] == "sweep":
+				sweep, offset, offset_unit, duration, duration_unit, freq, freq_unit, a, b = tokens
+
+				delay = parse_time_expr(f"{offset} {offset_unit}")
+				duration = parse_time_expr(f"{duration} {duration_unit}")
+				center_frequency = parse_freq_expr(f"{freq} {freq_unit}")
+				a = int(a)
+				b = int(b)
+
+				#
+				# Prepare model signal
+				#
+				time = dds.time_series(rate, capture_duration)
+				band = ad9910_sweep_bandwidth(a, b, sysclk=sysclk)
+
+				model_sweep = dds.sweep(time, -band/2, band/2, 0, duration)
+				temporal_freq = (time / duration)*band - band/2
+				spectral_freq = torch.linspace(-rate/2, rate/2, frames)
+
+				#
+				# Prepare delay estimator
+				#
+				# We could have some kind of heuristic to decide on the estimator,
+				# for example having at least 100 bins occupied to pick SpectralDelayEstimator:
+ 				# bins_occupied = int( torch.unique(freqs - freqs % (rate/frames)).shape[0] )
+ 				#
+ 				# But lets have it simpler:
+				# - Sweeps have SpectralDelayEstimator - which assumes contiguous indices_est
+				# - Pulses have ConvDelayEstimator
+
+				start = duration*trim + delay
+				stop = duration*(1-trim) + delay
+
+				temporal_indices = (time >= start) * (time < stop)
+
+				min_freq = temporal_freq[temporal_indices].min()
+				max_freq = temporal_freq[temporal_indices].max()
+
+				indices_est = (spectral_freq >= min_freq)*(spectral_freq < max_freq)
+				est = SpectralDelayEstimator(model_sweep, indices_est)
+
+				model = DDCAndCalibratorV1SignalModel()
+
+				model.est = est
+				model.temporal_freq = temporal_freq
+				model.temporal_indices = temporal_indices
+
+				models.append(model)
+			else:
+				assert 0
+
+		self.models = models
+
+		print(len(self.models), "models initialized")
 
 
 def parse_time_expr(expr, into="s"):
@@ -179,75 +282,7 @@ class FrequencyResponsePointsV1:
 		print("Loaded", len(captures), "captures")
 		print(len(chan_set), "channels active")
 
-		# Signal modelling
-		# Sowing and reaping
-		#################################################################################################
-		sysclk = parse_freq_expr("1 GHz")
-
-		frames = preset.ddc.frames
-		rate = parse_freq_expr(preset.ddc.samplerate)
-		capture_duration = frames / rate
-
-		# Modelling as DDC would have it
-		# TODO: Extract a set of parameters that matter, prep only that, propagate
-		for signal in preset.signals:
-			tokens = signal.emit.split(" ")
-
-			if tokens[0] == "sweep":
-				sweep, offset, offset_unit, duration, duration_unit, freq, freq_unit, a, b = tokens
-
-				delay = parse_time_expr(f"{offset} {offset_unit}")
-				duration = parse_time_expr(f"{duration} {duration_unit}")
-				center_frequency = parse_freq_expr(f"{freq} {freq_unit}")
-				a = int(a)
-				b = int(b)
-
-				#
-				# Prepare model signal
-				#
-				time = dds.time_series(rate, capture_duration)
-				band = ad9910_sweep_bandwidth(a, b, sysclk=sysclk)
-
-				model_sweep = dds.sweep(time, -band/2, band/2, 0, duration)
-				temporal_freq = (time / duration)*band - band/2
-				spectral_freq = torch.linspace(-rate/2, rate/2, frames)
-
-				#
-				# Prepare delay estimator
-				#
-				# We could have some kind of heuristic to decide on the estimator,
-				# for example having at least 100 bins occupied to pick SpectralDelayEstimator:
- 				# bins_occupied = int( torch.unique(freqs - freqs % (rate/frames)).shape[0] )
- 				#
- 				# But lets have it simpler:
-				# - Sweeps have SpectralDelayEstimator - which assumes contiguous indices_est
-				# - Pulses have ConvDelayEstimator
-
-				# FIXME: Trim (retain) hardcoded
-				trim = 0.05
-
-				start = duration*trim
-				stop = duration*(1-trim)
-
-				temporal_indices = (time >= start) * (time < stop)
-
-				min_freq = temporal_freq[temporal_indices].min()
-				max_freq = temporal_freq[temporal_indices].max()
-
-				indices_est = (spectral_freq >= min_freq)*(spectral_freq < max_freq)
-				est = SpectralDelayEstimator(model_sweep, indices_est)
-
-				signal.est = est
-				signal.time = time
-				signal.model = model_sweep
-				signal.temporal_indices = temporal_indices
-				signal.temporal_freq = temporal_freq
-				signal.spectral_freq = spectral_freq
-				signal.duration = duration
-				signal.estimator = est
-			else:
-				assert 0
-
+		preset.init_models()
 
 		# Channel to points mapping
 		points = { chan: {"x": [], "y": []} for chan in chan_set }
@@ -255,7 +290,7 @@ class FrequencyResponsePointsV1:
 		# Onto the actual processing
 		# Delay elimination + amplitude + averaging
 		#################################################################################################
-		for i, signal in enumerate(preset.signals):
+		for i, (signal, model) in enumerate(zip(preset.signals, preset.models)):
 			for channel in chan_set:
 				filter_fn = lambda x: x.trigger_number % len(preset.signals) == i and x.channel_number == channel
 
@@ -263,16 +298,16 @@ class FrequencyResponsePointsV1:
 
 				assert all([x.center_freq == parse_freq_expr(signal.tune) for x in repeats])
 
-				a = [self.eliminate_time_delay(x.iq, signal.est) for x in repeats]
+				a = [model.eliminate_delay(x.iq) for x in repeats]
 				a = torch.vstack(a).abs()
 
 				mampl = a.mean(0)
 				lower, _ = a.min(0)
 				upper, _ = a.max(0)
 
-				indices = signal.temporal_indices
+				indices = model.temporal_indices
 
-				x = signal.temporal_freq[indices] + parse_freq_expr(signal.tune)
+				x = model.temporal_freq[indices] + parse_freq_expr(signal.tune)
 				y = mampl[indices]
 
 				lower = lower[indices]
@@ -296,13 +331,5 @@ class FrequencyResponsePointsV1:
 
 		result = page([spectral])
 		result.show()
-
-	def eliminate_time_delay(self, iq, est):
-		sample_delay = est.estimate(iq)
-
-		# Use simple roll for now
-		return iq.roll( round(-sample_delay.item()) )
-
-
 
 FrequencyResponsePointsV1("/media/pop/2e7a55b1-cee8-4dd6-a513-4cd4c618a44e/calibrator_data_v1/calibrator_v1_2025-03-12T06_58_03+00_00")
