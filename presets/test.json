@@ -1,0 +1,14 @@
+{ "ddc-and-calibrator-v1": {
+	"ddc": {
+		"config_dir": "c:/workprogs/active/",
+		"samplerate": "5 MHz",
+		"frames": 8192
+	},
+	"signals": [
+		{
+			"tune": "154 MHz",
+			"level": "150 mV",
+			"emit": "sweep 0 us 900 us 154 MHz 77 1"
+		}
+	]
+}}

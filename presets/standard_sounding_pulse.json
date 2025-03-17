@@ -1,0 +1,19 @@
+{ "ddc-and-calibrator-v2": {
+	"ddc": {
+		"config_dir": "c:/workprogs/active/",
+		"samplerate": "5 MHz",
+		"frames": 8192
+	},
+	"signals": [
+		{
+			"tune": "154 MHz",
+			"level": "150 mV",
+			"emit": [
+				{"hold": "700 us", "amplitude": 1.0, "frequency": "158 MHz", "phase": "0 deg"},
+				{"hold": "120 us", "amplitude": 1.0, "frequency": "154 MHz", "phase": "180 deg"},
+				{"hold": "40 us", "amplitude": 1.0, "frequency": "154 MHz", "phase": "0 deg"},
+				{"hold": "40 us", "amplitude": 1.0, "frequency": "154 MHz", "phase": "180 deg"}
+			]
+		}
+	]
+}}
