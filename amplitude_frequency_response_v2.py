@@ -147,7 +147,7 @@ class SignalV1:
 		sample_delay = self.est.estimate(iq)
 
 		# Use simple roll for now
-		return iq.roll( round(-sample_delay.item()) )
+		return np.roll( iq, round(-sample_delay.item()) )
 
 
 def parse_time_expr(expr, into="s"):

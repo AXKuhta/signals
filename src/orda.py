@@ -1,7 +1,8 @@
 
 from datetime import datetime, timezone
 import struct
-import torch
+
+import numpy as np
 
 #
 # Loader for the bespoke ORDA .ISE/.SPU format used at Irkutsk Incoherent Scatter Radar
@@ -18,7 +19,7 @@ class ORDACap:
 	- Center frequency (Hz)
 	- Samplerate (Hz)
 	- Samplecount
-	- I/Q samples (torch.complex64)
+	- I/Q samples (complex128)
 	"""
 
 	trigger_number = None
@@ -37,8 +38,8 @@ class ORDACap:
 		self.samplerate = samplerate
 		self.samplecount = samplecount
 
-		imag, real = torch.frombuffer(iq_bytes, dtype=torch.int16).view(2, self.samplecount) / 1.0
-		self.iq = torch.complex(real, imag).to(dtype=torch.complex128)
+		imag, real = np.frombuffer(iq_bytes, dtype=np.int16).reshape(2, self.samplecount) / 1.0
+		self.iq = real + 1j*imag
 
 	@property
 	def basic(self):
