@@ -1,4 +1,4 @@
-import torch
+import numpy as np
 
 #
 # Loader for s2p files
@@ -29,7 +29,7 @@ class S2PFile:
 			s22.append( s22re + 1j*s22im )
 
 		self.freqs = freqs
-		self.s11 = torch.tensor(s11)
-		self.s21 = torch.tensor(s21)
-		self.s12 = torch.tensor(s12)
-		self.s22 = torch.tensor(s22)
+		self.s11 = np.array(s11)
+		self.s21 = np.array(s21)
+		self.s12 = np.array(s12)
+		self.s22 = np.array(s22)

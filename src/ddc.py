@@ -1,4 +1,4 @@
-import torch
+import numpy as np
 
 def sinc_in_time(n=40, m=20):
 	"""
@@ -22,8 +22,8 @@ def sinc_in_time(n=40, m=20):
 	```
 	"""
 
-	x = torch.arange(-n, n + 1) / n * m + 0.001
-	return torch.sin(torch.pi*x) / (torch.pi*x) / (n / m)
+	x = np.arange(-n, n + 1) / n * m + 0.001
+	return np.sin(np.pi*x) / (np.pi*x) / (n / m)
 
 def sinc_in_freq(n=512, offset=0.5, order=5):
 	"""
@@ -35,14 +35,14 @@ def sinc_in_freq(n=512, offset=0.5, order=5):
 	order		raise the function to nth power
 	"""
 
-	x = torch.linspace(-offset, +offset, n)
-	x = torch.fft.fftshift(x)
-	y = torch.sin(torch.pi*x) / (torch.pi*x)
+	x = np.linspace(-offset, +offset, n)
+	x = np.fft.fftshift(x)
+	y = np.sin(np.pi*x) / (np.pi*x)
 	y = y**order
 
-	assert not torch.any(torch.isnan(y))
+	assert not np.any(np.isnan(y))
 
-	return torch.fft.ifft(y).roll(-n//2)
+	return np.roll(np.fft.ifft(y), -n//2)
 
 def cic_as_fir_filter(n=512, d=2, stages=5):
 	"""
@@ -55,10 +55,10 @@ def cic_as_fir_filter(n=512, d=2, stages=5):
 	Bandwidth of the resulting filter is (roughly) samplerate / d
 	"""
 
-	sinc_in_freq = torch.fft.fft(torch.tensor([1]*d) / d, n)
+	sinc_in_freq = np.fft.fft(np.array([1]*d) / d, n)
 
 	cic_in_freq = sinc_in_freq**stages
-	cic_in_time = torch.fft.ifft(cic_in_freq)
+	cic_in_time = np.fft.ifft(cic_in_freq)
 
 	return cic_in_time
 
@@ -67,11 +67,11 @@ def filter(signal, filter):
 	Filter a signal using fft convolution
 	"""
 
-	spectrum_s = torch.fft.fft(signal)
-	spectrum_f = torch.fft.fft(filter)
+	spectrum_s = np.fft.fft(signal)
+	spectrum_f = np.fft.fft(filter)
 	spectrum_c = spectrum_s * spectrum_f
 
-	return torch.fft.ifft(spectrum_c)
+	return np.fft.ifft(spectrum_c)
 
 def invert_filter(filter):
 	"""
@@ -80,12 +80,12 @@ def invert_filter(filter):
 	filter		filter weights
 	"""
 
-	spectrum_f = torch.fft.fft(filter)
+	spectrum_f = np.fft.fft(filter)
 	spectrum_i = 1 / spectrum_f.conj() # Keep delay same
-	filter_i = torch.fft.ifft(spectrum_i)
+	filter_i = np.fft.ifft(spectrum_i)
 
-	assert not torch.any(torch.isnan(filter_i.real))
-	assert not torch.any(torch.isnan(filter_i.imag))
+	assert not np.any(np.isnan(filter_i.real))
+	assert not np.any(np.isnan(filter_i.imag))
 
 	return filter_i
 
@@ -108,16 +108,16 @@ def cic(signal, d=2, stages=5):
 	signal = ( signal / signal.abs().max() * 32767.0 ).to(torch.int16)
 	"""
 
-	assert signal.dtype == torch.int16
+	assert signal.dtype == np.int16
 
 	for i in range(stages):
-		signal = torch.cumsum(signal, 0, dtype=torch.int64)
+		signal = np.cumsum(signal, 0, dtype=np.int64)
 
 	# Decimation can be performed here
 	#signal = signal[::d]
 
 	for i in range(stages):
-		signal = signal - torch.roll(signal, d) # Replace d with 1 if decimating
+		signal = signal - np.roll(signal, d) # Replace d with 1 if decimating
 
 	# Initial elements contain nonsense
 	# Remove d if decimating
