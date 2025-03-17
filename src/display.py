@@ -325,8 +325,8 @@ def signal_fft(time, signal, title=None):
 
 	samples = time.shape[0]
 	samplerate = samples / time.max()
-	amplitude = signal.abs()
-	angle = signal.angle()
+	amplitude = np.abs(signal)
+	angle = np.angle(signal)
 
 	spectrum_x = np.linspace(-samplerate/2, samplerate/2, samples)
 	spectrum = np.fft.fftshift( np.fft.fft(signal) )
