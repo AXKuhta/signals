@@ -1,4 +1,4 @@
-import torch
+import numpy as np
 
 from .misc import roll_lerp
 
@@ -13,7 +13,7 @@ def time_series(samplerate, duration):
 	Double precision makes quite a difference
 	"""
 
-	return torch.arange(samplerate*duration, dtype=torch.double) / samplerate
+	return np.arange(samplerate*duration, dtype=np.float64) / samplerate
 
 def sine(time, freq, phase_offset=0.0, offset=0.0, duration=0.0):
 	"""
@@ -28,8 +28,8 @@ def sine(time, freq, phase_offset=0.0, offset=0.0, duration=0.0):
 	If duration is 0.0, then time[-1] is used as duration, filling the entire span of time
 	"""
 
-	phase = freq*2*torch.pi*time + phase_offset/180.0*torch.pi
-	signal = torch.exp(1j * phase)
+	phase = freq*2*np.pi*time + phase_offset/180.0*np.pi
+	signal = np.exp(1j * phase)
 
 	if duration:
 		assert time[0] == 0, "Please supply time with 0 at origin"
@@ -57,11 +57,11 @@ def sweep(time, f1, f2, offset=0.0, duration=0.0, clip=True):
 	delta = f2 - f1
 	x = time - offset
 
-	base = f1*2*torch.pi*x
-	swp = delta*torch.pi*x*x / duration
+	base = f1*2*np.pi*x
+	swp = delta*np.pi*x*x / duration
 
 	phase = base + swp
-	signal = torch.exp(1j * phase)
+	signal = np.exp(1j * phase)
 
 	if clip:
 		assert time[0] == 0, "Please supply time with 0 at origin"
@@ -92,12 +92,12 @@ def psk(time, freq, code = [0, 0, 1, 0, 1]):
 	for element in code:
 	    code_mask += [element]*element_duration
 
-	phase_offset = torch.tensor(code_mask) * torch.pi
+	phase_offset = np.array(code_mask) * np.pi
 
-	real = torch.cos(freq*2*torch.pi*time + phase_offset)
-	imag = torch.sin(freq*2*torch.pi*time + phase_offset)
+	real = np.cos(freq*2*np.pi*time + phase_offset)
+	imag = np.sin(freq*2*np.pi*time + phase_offset)
 
-	return torch.complex(real, imag)
+	return real + 1j*imag
 
 def rotator(phase_offset):
 	"""
@@ -105,4 +105,4 @@ def rotator(phase_offset):
 
 	phase offset	phase in degrees
 	"""
-	return torch.e**( (phase_offset/180.0*torch.pi) * 1j )
+	return np.e**( (phase_offset/180.0*np.pi) * 1j )

@@ -1,5 +1,5 @@
 from math import floor, ceil
-import torch
+import numpy as np
 
 #
 # AD9910 sweep calculations
@@ -12,6 +12,9 @@ def ad9910_sweep_bandwidth(a, b, duration=900/1000/1000, sysclk=1000*1000*1000):
 
 	return a * fstep * (steps - 1)
 
+def lerp(u, v, w):
+	return (1 - w) * u + v * w
+
 #
 # Roll with lerp
 # roll_lerp(torch.tensor([1,0,0,0]), 1) = tensor([0, 1, 0, 0])
@@ -21,11 +24,11 @@ def roll_lerp(x, shift):
 	shift = float(shift)
 	a = floor(shift)
 	b = ceil(shift)
-	u = x.roll(a)
-	v = x.roll(b)
+	u = np.roll(x, a)
+	v = np.roll(x, b)
 	w = shift - a
 
-	return torch.lerp(u, v, w)
+	return lerp(u, v, w)
 
 #
 # Parses expressions like 1000*1000*1000 or 1/1000/1000

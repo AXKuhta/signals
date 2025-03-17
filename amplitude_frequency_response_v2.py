@@ -3,6 +3,7 @@ from glob import glob
 import argparse
 import json
 
+import numpy as np
 import torch
 
 from deserializer import Model, Field
@@ -322,10 +323,10 @@ class FrequencyResponsePointsV1:
 		spectral = minmaxplot("Hz")
 
 		for chan, pts in points.items():
-			x = torch.hstack(pts["x"])
-			y = torch.hstack(pts["y"])
+			x = np.hstack(pts["x"])
+			y = np.hstack(pts["y"])
 
-			x, indices = torch.sort(x)
+			x, indices = np.sort(x), np.argsort(x)
 			y = y[indices]
 
 			spectral.trace(x, y)
