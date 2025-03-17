@@ -1,7 +1,6 @@
 from plotly.subplots import make_subplots
 import webbrowser
 import plotly
-import torch
 
 from .plotly_custom_html import to_html
 
@@ -329,10 +328,10 @@ def signal_fft(time, signal, title=None):
 	amplitude = signal.abs()
 	angle = signal.angle()
 
-	spectrum_x = torch.linspace(-samplerate/2, samplerate/2, samples)
-	spectrum = torch.fft.fftshift( torch.fft.fft(signal) )
-	spectrum_abs = spectrum.abs()
-	spectrum_angle = spectrum.angle()
+	spectrum_x = np.linspace(-samplerate/2, samplerate/2, samples)
+	spectrum = np.fft.fftshift( np.fft.fft(signal) )
+	spectrum_abs = np.abs(spectrum)
+	spectrum_angle = np.angle(spectrum.angle)
 
 	plot_signal_real = plotly.graph_objects.Scatter(x=time, y=signal.real, name="Real")
 	plot_signal_imag = plotly.graph_objects.Scatter(x=time, y=signal.imag, name="Imag", visible="legendonly")
