@@ -4,7 +4,6 @@ import argparse
 import json
 
 import numpy as np
-import torch
 
 from deserializer import Model, Field
 
@@ -105,7 +104,7 @@ class SignalV1:
 
 			model_sweep = dds.sweep(time, -band/2, band/2, 0, duration)
 			temporal_freq = (time / duration)*band - band/2
-			spectral_freq = torch.linspace(-rate/2, rate/2, frames)
+			spectral_freq = np.linspace(-rate/2, rate/2, frames)
 
 			#
 			# Prepare delay estimator
@@ -303,11 +302,11 @@ class FrequencyResponsePointsV1:
 				assert all([x.center_freq == tune for x in repeats])
 
 				a = [signal.eliminate_delay(x.iq) for x in repeats]
-				a = torch.vstack(a).abs()
+				a = np.abs(np.vstack(a))
 
 				mampl = a.mean(0)
-				lower, _ = a.min(0)
-				upper, _ = a.max(0)
+				lower, _ = a.min(0), np.argmin(0)
+				upper, _ = a.max(0), np.argmax(0)
 
 				x = signal.temporal_freq[indices] + tune
 				y = mampl[indices]
