@@ -60,3 +60,79 @@ def parse_numeric_expr(expr):
 			assert 0, f"unknown operator {operator}"
 
 	return acc
+
+
+def parse_angle_expr(expr, into="deg"):
+	"""
+	Parse an angle.
+	"""
+
+	value, unit = expr.split(" ")
+
+	if "." in value:
+		value = float(value)
+	else:
+		value = int(value)
+
+	# FIXME: add radians.
+	assert unit.lower() == "deg"
+
+	return value
+
+def parse_time_expr(expr, into="s"):
+	"""
+	Parse a quantity of time.
+
+	Examples:
+	>>> parse_time_expr("900 us", into="ns")
+	900000.0
+	"""
+
+	inv_factors = {
+		"s": 1,
+		"ms": 1000,
+		"us": 1000000,
+		"ns": 1000000000
+	}
+
+	value, unit = expr.split(" ")
+
+	if "." in value:
+		value = float(value)
+	else:
+		value = int(value)
+
+	inv_factor = inv_factors[ unit.lower() ] / inv_factors[ into.lower() ]
+
+	return value / inv_factor
+
+def parse_freq_expr(expr, into="hz"):
+	"""
+	Parse a frequency.
+
+	Examples:
+
+	>>> parse_freq_expr("150 MHz")
+	150000000
+	>>> parse_freq_expr("150.1 MHz")
+	150100000.0
+
+	Returns an int whenever possible.
+	"""
+
+	factors = {
+		"hz": 1,
+		"khz": 1000,
+		"mhz": 1000000
+	}
+
+	value, unit = expr.split(" ")
+
+	if "." in value:
+		value = float(value)
+	else:
+		value = int(value)
+
+	factor = factors[ unit.lower() ] // factors[ into.lower() ]
+
+	return value * factor
