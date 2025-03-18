@@ -77,7 +77,7 @@ class Field:
 		self.scopes = scopes
 		self.required = required
 
-class Model:
+class Schema:
 	@classmethod
 	def fields(cls):
 		return dict(filter(
@@ -99,7 +99,7 @@ class Model:
 	@classmethod
 	def trial_signatures(cls, obj, schemas):
 		"""
-		Picks a schema to deserialize a nested model
+		Picks a schema to deserialize a nested schema
 		"""
 
 		present = set(obj)
@@ -129,7 +129,7 @@ class Model:
 	def interpret_list(cls, lst, scopes):
 		"""
 		List patterns can be basic:
-		[int, float, str, Model] => *:int|float|str|Model
+		[int, float, str, Schema] => *:int|float|str|Schema
 
 		Also multidimensional:
 		[[int]] => *.*:int
@@ -145,7 +145,7 @@ class Model:
 
 		Those that need demotion:
 		[ int, [float], [str] ] => please rewrite as [ int, [float] ], [ int, [str] ]
-		[ int, [float, [str]], [bool, [Model]] ] => please rewrite as [ int, [float], [[str]] ], [ int, [bool], [[Model]] ]
+		[ int, [float, [str]], [bool, [Schema]] ] => please rewrite as [ int, [float], [[str]] ], [ int, [bool], [[Schema]] ]
 		"""
 
 		inapplicable = []

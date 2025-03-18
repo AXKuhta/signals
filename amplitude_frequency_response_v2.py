@@ -5,13 +5,13 @@ import json
 
 import numpy as np
 
-from deserializer import Model, Field
-
 from src.misc import ad9910_sweep_bandwidth, parse_numeric_expr, roll_lerp
 from src.delay import SpectralDelayEstimator
 from src.orda import StreamORDA
 import src.delay as delay
 import src.dds as dds
+
+from src.schemas.v1 import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dut", help="path to a directory containing captures+metadata with test signals fed through device under test", required=True)
@@ -36,20 +36,6 @@ args = parser.parse_args()
 #
 # Who makes SignalV1?
 #
-
-class JsonDDCSettingsV1(Model):
-	config_dir = Field(str)
-	samplerate = Field(str)
-	frames = Field(int)
-
-class JsonSignalV1(Model):
-	tune = Field(str)
-	level = Field(str)
-	emit = Field(str)
-
-class JsonDDCAndCalibratorV1(Model):
-	ddc = Field(JsonDDCSettingsV1)
-	signals = Field([JsonSignalV1])
 
 class SignalV1:
 	"""
