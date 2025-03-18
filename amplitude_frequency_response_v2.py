@@ -13,6 +13,11 @@ from src.orda import StreamORDA
 import src.delay as delay
 import src.dds as dds
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--dut", help="path to a directory containing captures+metadata with test signals fed through device under test", required=True)
+parser.add_argument("--ref", help="path to a directory containing captures+metadata with reference signals (device under test bypassed)")
+args = parser.parse_args()
+
 #
 # We have domain models:
 # - JsonDDCAndCalibratorV1
@@ -333,4 +338,4 @@ class FrequencyResponsePointsV1:
 		result = page([spectral])
 		result.show()
 
-FrequencyResponsePointsV1("/media/pop/2e7a55b1-cee8-4dd6-a513-4cd4c618a44e/calibrator_data_v1/calibrator_v1_2025-03-12T06_58_03+00_00")
+FrequencyResponsePointsV1(args.dut)
