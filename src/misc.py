@@ -123,7 +123,8 @@ def parse_freq_expr(expr, into="hz"):
 	factors = {
 		"hz": 1,
 		"khz": 1000,
-		"mhz": 1000000
+		"mhz": 1000000,
+		"ghz": 1000000000
 	}
 
 	value, unit = expr.split(" ")
