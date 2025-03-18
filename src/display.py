@@ -2,8 +2,6 @@ from plotly.subplots import make_subplots
 import webbrowser
 import plotly
 
-from .plotly_custom_html import to_html
-
 style = """
 <style>
 body {
@@ -25,6 +23,13 @@ body {
 }
 </style>
 """
+
+# Intentionally cut the precision down to f32 for reduced file size
+def ensure_lowp(x):
+	if hasattr(x, "dtype") and x.dtype == "float64":
+		return x.astype("float32")
+
+	return x
 
 class minmaxplot():
 	"""
@@ -97,8 +102,8 @@ class minmaxplot():
 			markers = len(time) < 500
 
 		plot_signal = plotly.graph_objects.Scatter(
-			x=time,
-			y=signal,
+			x=ensure_lowp(time),
+			y=ensure_lowp(signal),
 			name=name,
 			line=dict(color=color, dash=dash, width=width), # shape="spline", smoothing=1 slow
 			visible="legendonly" if hidden else True,
@@ -118,8 +123,8 @@ class minmaxplot():
 			poly_y = max + min[::-1]
 
 			plot_error = plotly.graph_objects.Scatter(
-				x=poly_x,
-				y=poly_y,
+				x=ensure_lowp(poly_x),
+				y=ensure_lowp(poly_y),
 				fill='toself',
 				fillcolor=f'rgba({r}, {g}, {b}, .2)',
 				line=dict(width=0),
@@ -220,7 +225,7 @@ class minmaxplot():
 			file.write(style)
 			file.write("<main>")
 			file.write(f"<h3>{title}</h3>" if title else "<h3>WAVEFORM</h3>")
-			file.write( to_html(fig, full_html=False) )
+			file.write( fig.to_html(full_html=False) )
 			file.write("</main>")
 
 		webbrowser.open("minmaxplot.html")
@@ -234,7 +239,7 @@ class page():
 		file.write(f"<div class=\"{fig.__class__.__name__}\">")
 		file.write(f"<div class=\"header\">{fig.header_html}</div>" if fig.header_html else "")
 		file.write(f"<div class=\"plotly_html\">")
-		file.write( to_html(fig.fig(), full_html=False) )
+		file.write( fig.fig().to_html(full_html=False) )
 		file.write("</div>")
 		file.write(f"<div class=\"footer\">{fig.footer_html}</div>" if fig.footer_html else "")
 		file.write("</div>")
@@ -244,7 +249,7 @@ class page():
 			self.write_fig(file, fig)
 
 	def show(self):
-		with open("result.html", "w") as file:
+		with open("result.html", "w", encoding="utf8") as file:
 			file.write("<!DOCTYPE html>")
 			file.write(style)
 			file.write("<main>")
@@ -273,7 +278,10 @@ def waveform(time, signal, title=None, error_band=None):
 
 	samplerate = time.shape[0]
 
-	plot_signal = plotly.graph_objects.Scatter(x=time, y=signal)
+	plot_signal = plotly.graph_objects.Scatter(
+		x=ensure_lowp(time),
+		y=ensure_lowp(signal)
+	)
 
 	if error_band is None:
 		plot_error = {}
@@ -281,8 +289,8 @@ def waveform(time, signal, title=None, error_band=None):
 		poly_x, poly_y = error_band
 
 		plot_error = plotly.graph_objects.Scatter(
-			x=poly_x,
-			y=poly_y,
+			x=ensure_lowp(poly_x),
+			y=ensure_lowp(poly_y),
 			fill='toself',
 			fillcolor='rgba(0,100,80,0.2)',
 			line=dict(color='rgba(255,255,255,0)'),
