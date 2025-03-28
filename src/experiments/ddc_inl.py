@@ -65,11 +65,23 @@ def run_v1():
 		hi_codes_max.append( amplitude.max() )
 		print(mv, code, f"\t3 sigma = {3*noise:.3f}")
 
+	#
+	# Model the attenuation here:
+	#
+	import json
+
+	with open("ddc_attenuation.json", "rb") as f:
+		z = json.load(f)
+
+	fade = np.interp(190*1000*1000, z["x"], z["y"])
+
 	lo_cost = (lo_codes[0] - lo_codes[-1]) / 260
 	hi_cost = (hi_codes[0] - hi_codes[-1]) / 340
+	hi_cost_est = (lo_codes[0]*fade - lo_codes[-1]*fade) / 260
 
 	print("lo cost per mv", lo_cost)
 	print("hi cost per mv", hi_cost)
+	print("hi cost estimate", hi_cost_est)
 
 	def r(x):
 		z = [] + x
