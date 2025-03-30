@@ -5,7 +5,7 @@ import json
 
 import numpy as np
 
-from src.misc import ad9910_sweep_bandwidth, parse_numeric_expr, parse_time_expr, parse_freq_expr, roll_lerp
+from src.misc import ad9910_sweep_bandwidth, parse_numeric_expr, parse_time_expr, parse_freq_expr, roll_lerp, ddc_cost_mv
 from src.delay import SpectralDelayEstimator
 from src.orda import StreamORDA
 import src.delay as delay
@@ -153,7 +153,10 @@ class FrequencyResponsePointsV1:
 			x, indices = np.sort(x), np.argsort(x)
 			y = y[indices]
 
-			spectral.trace(x, y)
+			# Postprocessing: voltage scale in mv
+			factor = ddc_cost_mv(x)
+
+			spectral.trace(x, y * factor)
 
 		result = page([spectral])
 		result.show()
