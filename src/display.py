@@ -331,6 +331,8 @@ def signal_fft(time, signal, title=None):
 	signal = signal series
 	"""
 
+	import numpy as np
+
 	samples = time.shape[0]
 	samplerate = samples / time.max()
 	amplitude = np.abs(signal)
@@ -339,7 +341,7 @@ def signal_fft(time, signal, title=None):
 	spectrum_x = np.linspace(-samplerate/2, samplerate/2, samples)
 	spectrum = np.fft.fftshift( np.fft.fft(signal) )
 	spectrum_abs = np.abs(spectrum)
-	spectrum_angle = np.angle(spectrum.angle)
+	spectrum_angle = np.angle(spectrum)
 
 	plot_signal_real = plotly.graph_objects.Scatter(x=time, y=signal.real, name="Real")
 	plot_signal_imag = plotly.graph_objects.Scatter(x=time, y=signal.imag, name="Imag", visible="legendonly")
@@ -382,11 +384,11 @@ def signal_fft(time, signal, title=None):
 		if title:
 			file.write(f"<h1>{title}</h1>")
 		file.write("<h3>WAVEFORM</h3>")
-		file.write(to_html(fig_signal, full_html=False))
+		file.write(fig_signal.to_html(full_html=False))
 		file.write("<h3>SPECTRUM</h3>")
-		file.write(to_html(fig_spectrum, full_html=False))
+		file.write(fig_spectrum.to_html(full_html=False))
 		file.write("<h3>STRENGTH</h3>")
-		file.write(to_html(fig_amplitude, full_html=False))
+		file.write(fig_amplitude.to_html(full_html=False))
 		file.write("</main>")
 
 	webbrowser.open("fft_plot.html")
