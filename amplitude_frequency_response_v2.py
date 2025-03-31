@@ -53,17 +53,18 @@ args = parser.parse_args()
 #	- Plot it
 #
 # Whenever the adjusted mode is used:
-# - Two instances of FrequencyResponsePointsV1
+# - Extra method FrequencyResponsePointsV1
 # - Assert pulse set is the same
-# - That way point array X is absolutely surely the same
-# 	- Do not want to deal with resampling
-#		- Though it aint that hard
+# - No reason whatsoever to support different pulse sets
+# 	- While possible, do not want to deal with resampling
+#		- Though it may be less difficult than it seems
 #			- bins `x - x % 0.1`
 #			- new X np.unique(...)
 #			- gather x[b == 0.1]
 #				- for loop
 #				- stack
-# - 20log10 before plotting
+# - Would entail a second instance of FrequencyResponsePointsV1
+# - Stick to single instance of FrequencyResponsePointsV1
 #
 
 
