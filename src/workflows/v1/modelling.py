@@ -2,7 +2,7 @@
 import numpy as np
 
 from src.delay import SpectralDelayEstimator
-from src.misc import ad9910_sweep_bandwidth, parse_freq_expr, parse_time_expr
+from src.misc import ad9910_sweep_bandwidth, ad9910_best_asf_fsc_v0, ad9910_vrms_v1, parse_freq_expr, parse_volt_expr, parse_time_expr, ddc_cost_mv
 import src.dds as dds
 
 #
@@ -37,12 +37,19 @@ class ModelSignalV1:
 
 	# Lack of context regarding other signals can cause duplicate work-
 	# most signals are literally the same
+	iq = None
 	est = None
 	time = None
 	delay = None
 	duration = None
 	temporal_freq = None
 	spectral_freq = None
+
+	# The calibrator's signal level calibration value
+	# Adjusts how much voltage is demanded at AD9910s
+	# DAC output to factor in losses in the lowpass filter
+	# and to compensate for DAC's own imperfections
+	signal_level_factor = 1/0.954992586
 
 	def __init__(self, descriptor, ddc, trim=0.05):
 		"""
@@ -62,6 +69,12 @@ class ModelSignalV1:
 
 		capture_duration = frames / rate
 
+		# FIXME: we should just be able to use the level directly if the signal generator really was properly calibrated
+		# As of now it isn't
+		level = parse_volt_expr(descriptor.level) * self.signal_level_factor
+		asf, fsc = ad9910_best_asf_fsc_v0(level)
+		level = ad9910_vrms_v1(asf, fsc) / self.signal_level_factor
+
 		tokens = descriptor.emit.split(" ")
 
 		if tokens[0] == "sweep":
@@ -80,9 +93,13 @@ class ModelSignalV1:
 			time = dds.time_series(rate, capture_duration)
 			band = ad9910_sweep_bandwidth(a, b, sysclk=sysclk)
 
-			model_sweep = dds.sweep(time, -band/2, band/2, 0, duration)
 			temporal_freq = (time / duration)*band - band/2
 			spectral_freq = np.linspace(-rate/2, rate/2, frames)
+			model_sweep = dds.sweep(time, -band/2, band/2, 0, duration)
+
+			# DDC's perceived signal level
+			amplitude = level * 1000 / ddc_cost_mv(temporal_freq + center_frequency)
+			model_sweep *= amplitude
 
 			#
 			# Prepare delay estimator
@@ -107,6 +124,7 @@ class ModelSignalV1:
 			indices_est = (spectral_freq >= min_freq)*(spectral_freq < max_freq)
 			est = SpectralDelayEstimator(model_sweep, indices_est)
 
+			self.iq = model_sweep
 			self.est = est
 			self.time = time
 			self.delay = delay

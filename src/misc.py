@@ -12,6 +12,86 @@ def ad9910_sweep_bandwidth(a, b, duration=900/1000/1000, sysclk=1000*1000*1000):
 
 	return a * fstep * (steps - 1)
 
+#
+# AD9910 full scale current
+#
+def ad9910_fsc_i(fsc):
+	return (86.4 / 10000) * (1 + (fsc/96.0))
+
+
+# AD9910 is a current steering DAC
+# Its peak output voltage is V = IR
+#
+# Where:
+# R	the load in ohms
+# I	output current
+#
+# While the current is:
+# I = (asf/16383) * i(fsc)
+#
+# Where:
+# fsc	full scale current code
+# asf	amplitude scale factor code
+#
+# Peak voltage is then converted into rms
+#
+# To determine the DAC load see AD9910 PCBZ schematics
+# and https://www.ti.com/lit/an/slaa399/slaa399.pdf
+#
+def ad9910_vrms_v0(asf, fsc):
+	"""
+	AD9910 output voltage estimate (no R43 installed)
+	"""
+
+	return ad9910_fsc_i(fsc) * (asf/16383) * (50/3) * 2**-.5
+
+def ad9910_vrms_v1(asf, fsc):
+	"""
+	AD9910 output voltage estimate (R43 is 100 ohms)
+	"""
+
+	return ad9910_fsc_i(fsc) * (asf/16383) * (12.5) * 2**-.5
+
+def ad9910_best_asf_fsc_v0(mv_rms):
+	"""
+	A pair of (asf, fsc) values that represent a given output voltage
+
+	Assumes no R43 installed
+
+	Tries to maximize asf
+
+	Does not factor in sinc rolloff or lowpass filter losses
+	"""
+
+	for fsc in range(256):
+		cost = ad9910_vrms_v0(1, fsc)
+		asf = round(mv_rms / cost)
+
+		if asf <= 16383:
+			return asf, fsc
+
+	assert 0
+
+def ad9910_best_asf_fsc_v1(mv_rms):
+	"""
+	A pair of (asf, fsc) values that represent a given output voltage
+
+	Assumes R43 is 100 ohms
+
+	Tries to maximize asf
+
+	Does not factor in sinc rolloff or lowpass filter losses
+	"""
+
+	for fsc in range(256):
+		cost = ad9910_vrms_v1(1, fsc)
+		asf = round(mv_rms / cost)
+
+		if asf <= 16383:
+			return asf, fsc
+
+	assert 0
+
 def lerp(u, v, w):
 	return (1 - w) * u + v * w
 
@@ -93,6 +173,32 @@ def parse_time_expr(expr, into="s"):
 		"ms": 1000,
 		"us": 1000000,
 		"ns": 1000000000
+	}
+
+	value, unit = expr.split(" ")
+
+	if "." in value:
+		value = float(value)
+	else:
+		value = int(value)
+
+	inv_factor = inv_factors[ unit.lower() ] / inv_factors[ into.lower() ]
+
+	return value / inv_factor
+
+def parse_volt_expr(expr, into="v"):
+	"""
+	Parse a voltage.
+
+	Examples:
+	>>> parse_time_expr("60 mv", into="mv")
+	60.0
+	"""
+
+	inv_factors = {
+		"v": 1,
+		"mv": 1000,
+		"uv": 1000000
 	}
 
 	value, unit = expr.split(" ")

@@ -181,6 +181,9 @@ class FrequencyResponsePointsV1:
 		self.adc_ch_x = adc_ch_x
 		self.adc_ch_y = adc_ch_y
 
+		self.model_x = np.hstack(model_x)
+		self.model_y = np.hstack(model_y)
+
 	def adc_ch_iterator(self):
 		"""
 		Iterate through channel numbers associated with respective x, y arrays
@@ -189,10 +192,11 @@ class FrequencyResponsePointsV1:
 		y	perceived signal level in ADC codes
 		"""
 
-		return enumerate(zip(
+		return zip(
+			self.adc_ch_x.keys(),
 			self.adc_ch_x.values(),
 			self.adc_ch_y.values()
-		))
+		)
 
 	def display_mv(self):
 		"""
@@ -203,7 +207,7 @@ class FrequencyResponsePointsV1:
 		spectral.xtitle("MHz")
 		spectral.ytitle("mV")
 
-		for chan, (x, y) in self.adc_ch_iterator():
+		for chan, x, y in self.adc_ch_iterator():
 			# Postprocessing: voltage scale in mv
 			# This also removes the DDC's overall influence on frequency response
 			factor = ddc_cost_mv(x)
@@ -222,12 +226,13 @@ class FrequencyResponsePointsV1:
 		spectral.xtitle("MHz")
 		spectral.ytitle("dB")
 
-		for chan, (x, y) in self.adc_ch_iterator():
-			spectral.trace(x, y, name=f"Channel {chan}")
+		for chan, x, y in self.adc_ch_iterator():
+			ratio = 10*np.log10(y / self.model_y)
+			spectral.trace(x, ratio, name=f"Channel {chan}")
 
 		result = page([spectral])
 		result.show()
 
 
 x = FrequencyResponsePointsV1(args.dut)
-x.display_mv()
+x.display_db_unreferenced()
