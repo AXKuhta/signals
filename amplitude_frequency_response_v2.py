@@ -7,6 +7,7 @@ import numpy as np
 
 from src.misc import ad9910_sweep_bandwidth, parse_numeric_expr, parse_time_expr, parse_freq_expr, roll_lerp, ddc_cost_mv
 from src.delay import SpectralDelayEstimator
+from src.display import minmaxplot, page
 from src.orda import StreamORDA
 import src.delay as delay
 import src.dds as dds
@@ -69,6 +70,12 @@ args = parser.parse_args()
 class FrequencyResponsePointsV1:
 	"""
 	Application class to translate a folder of captures+metadata into frequency response points (x, y)
+
+	The class should support three display scenarios:
+	- Raw ADC codes
+	- Signal level estimate
+	- dB against a model
+	- dB against a reference - done elsewhere
 	"""
 
 	def __init__(self, location, trim=0.05):
@@ -142,23 +149,41 @@ class FrequencyResponsePointsV1:
 				points[channel]["x"].append(x)
 				points[channel]["y"].append(y)
 
-		from src.display import minmaxplot, page
-
-		spectral = minmaxplot("Hz")
-
-		for chan, pts in points.items():
-			x = np.hstack(pts["x"])
-			y = np.hstack(pts["y"])
+		# Second pass over the data to sort it - this deals with overlap
+		#################################################################################################
+		for chan in points:
+			x = np.hstack(points[chan]["x"])
+			y = np.hstack(points[chan]["y"])
 
 			x, indices = np.sort(x), np.argsort(x)
 			y = y[indices]
 
+			points[chan]["x"] = x
+			points[chan]["y"] = y
+
+		self.points = points
+
+	def display_mv(self):
+		"""
+		Trace the estimate of signal level in mV rms as a function of frequency
+		"""
+
+		spectral = minmaxplot("Hz")
+		spectral.xtitle("MHz")
+		spectral.ytitle("mV")
+
+		for chan, pts in self.points.items():
+			x = pts["x"]
+			y = pts["y"]
+
 			# Postprocessing: voltage scale in mv
+			# This also removes the DDC's overall influence on frequency response
 			factor = ddc_cost_mv(x)
 
-			spectral.trace(x, y * factor)
+			spectral.trace(x, y * factor, name=f"Channel {chan}")
 
 		result = page([spectral])
 		result.show()
 
-FrequencyResponsePointsV1(args.dut)
+x = FrequencyResponsePointsV1(args.dut)
+x.display_mv()
