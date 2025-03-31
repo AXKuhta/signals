@@ -106,8 +106,14 @@ class FrequencyResponsePointsV1:
 		print("Loaded", len(captures), "captures")
 		print(len(chan_set), "channels active")
 
-		# Channel to points mapping
-		points = { chan: {"x": [], "y": []} for chan in chan_set }
+		# Point storage for:
+		# - ADC's perceived level, channel wise, across frequencies
+		# - Model level, across frequencies
+		adc_ch_x = { chan: [] for chan in chan_set }
+		adc_ch_y = { chan: [] for chan in chan_set }
+
+		model_x = []
+		model_y = []
 
 		signals = []
 
@@ -126,6 +132,17 @@ class FrequencyResponsePointsV1:
 
 			indices = (signal.time >= start) * (signal.time < stop)
 
+			# Model captures
+			x = signal.temporal_freq[indices] + tune
+			y = np.abs(signal.iq)[indices]
+
+			model_x.append(x)
+			model_y.append(y)
+
+			# Actual captures
+			# Deal with:
+			# - Different channels
+			# - Accumulation
 			for channel in chan_set:
 				filter_fn = lambda x: x.trigger_number % len(signals) == i and x.channel_number == channel
 
@@ -146,22 +163,36 @@ class FrequencyResponsePointsV1:
 				lower = lower[indices]
 				upper = upper[indices]
 
-				points[channel]["x"].append(x)
-				points[channel]["y"].append(y)
+				adc_ch_x[channel].append(x)
+				adc_ch_y[channel].append(y)
 
 		# Second pass over the data to sort it - this deals with overlap
 		#################################################################################################
-		for chan in points:
-			x = np.hstack(points[chan]["x"])
-			y = np.hstack(points[chan]["y"])
+		for chan in chan_set:
+			x = np.hstack(adc_ch_x[chan])
+			y = np.hstack(adc_ch_y[chan])
 
 			x, indices = np.sort(x), np.argsort(x)
 			y = y[indices]
 
-			points[chan]["x"] = x
-			points[chan]["y"] = y
+			adc_ch_x[chan] = x
+			adc_ch_y[chan] = y
 
-		self.points = points
+		self.adc_ch_x = adc_ch_x
+		self.adc_ch_y = adc_ch_y
+
+	def adc_ch_iterator(self):
+		"""
+		Iterate through channel numbers associated with respective x, y arrays
+
+		x	test signal frequency in Hz (always the same)
+		y	perceived signal level in ADC codes
+		"""
+
+		return enumerate(zip(
+			self.adc_ch_x.values(),
+			self.adc_ch_y.values()
+		))
 
 	def display_mv(self):
 		"""
@@ -172,10 +203,7 @@ class FrequencyResponsePointsV1:
 		spectral.xtitle("MHz")
 		spectral.ytitle("mV")
 
-		for chan, pts in self.points.items():
-			x = pts["x"]
-			y = pts["y"]
-
+		for chan, (x, y) in self.adc_ch_iterator():
 			# Postprocessing: voltage scale in mv
 			# This also removes the DDC's overall influence on frequency response
 			factor = ddc_cost_mv(x)
@@ -184,6 +212,22 @@ class FrequencyResponsePointsV1:
 
 		result = page([spectral])
 		result.show()
+
+	def display_db_unreferenced(self):
+		"""
+		Trace the ratio of actual signal level to model signal level
+		"""
+
+		spectral = minmaxplot("Hz")
+		spectral.xtitle("MHz")
+		spectral.ytitle("dB")
+
+		for chan, (x, y) in self.adc_ch_iterator():
+			spectral.trace(x, y, name=f"Channel {chan}")
+
+		result = page([spectral])
+		result.show()
+
 
 x = FrequencyResponsePointsV1(args.dut)
 x.display_mv()
