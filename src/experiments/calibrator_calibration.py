@@ -14,7 +14,10 @@ def run_v1():
 	"""
 
 	fname_a = "c:/Data/cal/20250402_060325_000_0000_003_000.ISE"
-	fname_b = "c:/Data/cal/20250402_052804_000_0000_003_000.ISE"
+	#fname_b = "c:/Data/cal/20250402_052804_000_0000_003_000.ISE" # AD9910 normal
+	#fname_b = "c:/Data/cal/20250402_072437_000_0000_003_000.ISE" # AD9910 lowpass removed
+	#fname_b = "c:/Data/cal/20250402_075219_000_0000_003_000.ISE" # AD9910 lowpass restored
+	fname_b = "c:/Data/cal/20250402_080854_000_0000_003_000.ISE"  # Longer cable
 
 	#
 	# Load all captures
@@ -50,9 +53,16 @@ def run_v1():
 	min = []
 	max = []
 
+	# Compensate for sinc rolloff
+	sysclk = 1000*1000*1000
+
+	def inv_sinc(x):
+		x = x / 1000 / 1000 / 1000
+		return np.pi * x / np.sin(np.pi * x)
+
 	# We assume b-records have lower amplitude than a-records
 	for a, b in zip(a_captures, b_captures):
-		ratio = np.abs(b.iq) / np.abs(a.iq)
+		ratio = inv_sinc(a.center_freq) * np.abs(b.iq) / np.abs(a.iq)
 
 		x.append( a.center_freq )
 		y.append( ratio.mean() )
@@ -70,6 +80,8 @@ def run_v1():
 	import matplotlib.pyplot as plt
 
 	plt.title("Ratio")
+	#plt.plot( np.array(x)/1000/1000, 10*np.log10(y), label="|b|/|a|")
+	#plt.fill( np.array(x + r(x))/1000/1000, 10*np.log10(max + r(min)), alpha=0.5)
 	plt.plot( np.array(x)/1000/1000, y, label="|b|/|a|")
 	plt.fill( np.array(x + r(x))/1000/1000, max + r(min), alpha=0.5)
 	plt.xlabel("MHz")
