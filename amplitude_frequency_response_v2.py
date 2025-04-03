@@ -8,14 +8,10 @@ import numpy as np
 from src.misc import ad9910_sweep_bandwidth, parse_numeric_expr, parse_time_expr, parse_freq_expr, roll_lerp, ddc_cost_mv
 from src.delay import SpectralDelayEstimator
 from src.display import minmaxplot, page
+from src.touchstone import S2PFile
 from src.orda import StreamORDA
 import src.delay as delay
 import src.dds as dds
-
-#
-# What's missing:
-# - Referenced mode
-#
 
 from src.workflows.v1 import ModelSignalV1
 
@@ -219,17 +215,23 @@ class FrequencyResponsePointsV1:
 		result = page([spectral])
 		result.show()
 
-	def display_db_unreferenced(self):
+	def display_db_unreferenced(self, attenuation=1/402):
 		"""
 		Trace the ratio of actual signal level to model signal level
+
+		Tries to compensate for DDC's and DDS's frequency response - but may be imperfect
 		"""
 
 		spectral = minmaxplot("Hz")
 		spectral.xtitle("MHz")
 		spectral.ytitle("dB")
 
+		def inv_sinc(x):
+			x = x / 1000 / 1000 / 1000
+			return np.pi * x / np.sin(np.pi * x)
+
 		for chan, x, y in self.adc_ch_iterator():
-			ratio = 10*np.log10(y / self.model_y)
+			ratio = 20*np.log10(y / ( self.model_y * attenuation * inv_sinc(self.model_x) ) )
 			spectral.trace(x, ratio, name=f"Channel {chan}")
 
 		result = page([spectral])
@@ -261,7 +263,7 @@ class FrequencyResponsePointsV1:
 
 a = FrequencyResponsePointsV1(args.dut)
 b = FrequencyResponsePointsV1(args.ref)
-#a.display_db_unreferenced()
+a.display_db_unreferenced()
 
-a.display_db_referenced(b)
+#a.display_db_referenced(b)
 
