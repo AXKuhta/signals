@@ -181,6 +181,7 @@ class FrequencyResponsePointsV1:
 
 		self.adc_ch_x = adc_ch_x
 		self.adc_ch_y = adc_ch_y
+		self.chan_set = chan_set
 
 		self.model_x = np.hstack(model_x)
 		self.model_y = np.hstack(model_y)
@@ -194,7 +195,7 @@ class FrequencyResponsePointsV1:
 		"""
 
 		return zip(
-			self.adc_ch_x.keys(),
+			self.chan_set,
 			self.adc_ch_x.values(),
 			self.adc_ch_y.values()
 		)
@@ -234,6 +235,33 @@ class FrequencyResponsePointsV1:
 		result = page([spectral])
 		result.show()
 
+	def display_db_referenced(self, other):
+		"""
+		Trace power gain against a reference
+		"""
 
-x = FrequencyResponsePointsV1(args.dut)
-x.display_db_unreferenced()
+		spectral = minmaxplot("Hz")
+		spectral.xtitle("MHz")
+		spectral.ytitle("dB")
+
+		assert self.chan_set == other.chan_set
+
+		for chan, x, u, v in zip(
+			self.chan_set,
+			self.adc_ch_x.values(),
+			self.adc_ch_y.values(),
+			other.adc_ch_y.values()
+		):
+			ratio = 20*np.log10(u / v)
+			spectral.trace(x, ratio, name=f"Channel {chan}")
+
+		result = page([spectral])
+		result.show()
+
+
+a = FrequencyResponsePointsV1(args.dut)
+b = FrequencyResponsePointsV1(args.ref)
+#a.display_db_unreferenced()
+
+a.display_db_referenced(b)
+
