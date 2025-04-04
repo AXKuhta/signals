@@ -244,6 +244,19 @@ def parse_freq_expr(expr, into="hz"):
 
 	return value * factor
 
+def pretty_freq(freq):
+	unit = "Hz"
+
+	if freq >= 1000:
+		freq /= 1000
+		unit = "kHz"
+
+	if freq >= 1000:
+		freq /= 1000
+		unit = "MHz"
+
+	return f"{freq} {unit}"
+
 def ddc_cost_mv(freq):
 	"""
 	DDC voltage scale model
