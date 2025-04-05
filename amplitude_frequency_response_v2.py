@@ -210,7 +210,7 @@ class FrequencyResponsePointsV1:
 		result = page([spectral])
 		result.show()
 
-	def display_db_vs_model(self, attenuation=1/402):
+	def display_db_vs_model(self, attenuation=1.0):
 		"""
 		Trace the ratio of actual signal level to model signal level
 
@@ -232,7 +232,7 @@ class FrequencyResponsePointsV1:
 		result = page([spectral])
 		result.show()
 
-	def display_db_referenced(self, other):
+	def display_db_referenced(self, other, attenuation=1.0):
 		"""
 		Trace power gain against a reference
 		"""
@@ -241,7 +241,8 @@ class FrequencyResponsePointsV1:
 		spectral.xtitle("MHz")
 		spectral.ytitle("dB")
 
-		assert self.chan_set == other.chan_set
+		assert self.chan_set == other.chan_set, "Channel set mismatch between datasets"
+		assert self.model_x.shape == other.model_x.shape, "Frequency set mismatch between datasets"
 
 		for chan, x, u, v in zip(
 			self.chan_set,
@@ -249,7 +250,7 @@ class FrequencyResponsePointsV1:
 			self.adc_ch_y.values(),
 			other.adc_ch_y.values()
 		):
-			ratio = 20*np.log10(u / v) + 58.45969
+			ratio = 20*np.log10( u / (v * attenuation) )
 			spectral.trace(x, ratio, name=f"Channel {chan}")
 
 		result = page([spectral])
@@ -278,7 +279,7 @@ if args.dut and args.ref:
 	if args.csv:
 		assert 0
 	else:
-		a.display_db_referenced(b)
+		a.display_db_referenced(b, attenuation)
 elif args.dut:
 	assert (args.model or args.raw), "either --raw or --model must be specified with no --ref"
 	assert not (args.model and args.raw), "--raw and --model are mutually exclusive"
