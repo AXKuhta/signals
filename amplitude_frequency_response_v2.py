@@ -18,11 +18,6 @@ from src.workflows.v1 import ModelSignalV1
 from src.schemas.v1 import *
 #from src.models.v1 import *
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--dut", help="path to a directory containing captures+metadata with test signals fed through device under test", required=True)
-parser.add_argument("--ref", help="path to a directory containing captures+metadata with reference signals (device under test bypassed)")
-args = parser.parse_args()
-
 #
 # Amplitude Frequency Response the 2nd:
 #
@@ -215,7 +210,7 @@ class FrequencyResponsePointsV1:
 		result = page([spectral])
 		result.show()
 
-	def display_db_unreferenced(self, attenuation=1/402):
+	def display_db_vs_model(self, attenuation=1/402):
 		"""
 		Trace the ratio of actual signal level to model signal level
 
@@ -254,16 +249,49 @@ class FrequencyResponsePointsV1:
 			self.adc_ch_y.values(),
 			other.adc_ch_y.values()
 		):
-			ratio = 20*np.log10(u / v)
+			ratio = 20*np.log10(u / v) + 58.45969
 			spectral.trace(x, ratio, name=f"Channel {chan}")
 
 		result = page([spectral])
 		result.show()
 
+parser = argparse.ArgumentParser(description="Produces a plot or a csv file of amplitude frequency response.")
+parser.add_argument("--dut", help="path to a directory containing captures+metadata with test signals fed into device under test", required=True)
+parser.add_argument("--ref", help="path to a directory containing captures+metadata with reference signals (device under test bypassed)")
+parser.add_argument("--offset", help="specify how much extra gain or attenuation of reference signals should be factored in, e.g. 0.00498 or \"-46 dB\"")
+parser.add_argument("--csv", help="write results into a specified csv file")
+parser.add_argument("--model", help="[when no --ref] use an approximate model of reference signals instead of actual reference captures", action="store_true")
+parser.add_argument("--raw", help="[when no --ref] display signal level in |iq| adc codes", action="store_true")
+parser.add_argument("--mv", help="[when no --ref] display signal level in volts", action="store_true")
+args = parser.parse_args()
 
-a = FrequencyResponsePointsV1(args.dut)
-b = FrequencyResponsePointsV1(args.ref)
-a.display_db_unreferenced()
+attenuation = float(args.offset or "1.0")
 
-#a.display_db_referenced(b)
+if args.dut and args.ref:
+	assert not args.model, "--model cannot be used with --ref"
+	assert not args.raw, "--raw cannot be used with --ref"
+	assert not args.mv, "--mv cannot be used with --ref"
 
+	a = FrequencyResponsePointsV1(args.dut)
+	b = FrequencyResponsePointsV1(args.ref)
+
+	if args.csv:
+		assert 0
+	else:
+		a.display_db_referenced(b)
+elif args.dut:
+	assert (args.model or args.raw), "either --raw or --model must be specified with no --ref"
+	assert not (args.model and args.raw), "--raw and --model are mutually exclusive"
+	assert not (args.model and args.mv), "--mv cannot be used with --model"
+
+	a = FrequencyResponsePointsV1(args.dut)
+
+	if args.model:
+		if args.csv:
+			assert 0
+		else:
+			a.display_db_vs_model(attenuation)
+	else:
+		assert 0
+else:
+	assert 0
