@@ -53,7 +53,7 @@ class FrequencyResponsePointsV1:
 			- Deals with overlap
 	"""
 
-	def __init__(self, location, trim=0.05):
+	def __init__(self, location, trim=0.05, attenuation=1.0):
 		with open(f"{location}/preset.json") as f:
 			obj = json.load(f)
 
@@ -160,6 +160,8 @@ class FrequencyResponsePointsV1:
 		self.model_x = np.hstack(model_x)
 		self.model_y = np.hstack(model_y)
 
+		self.attenuation = attenuation
+
 	def adc_ch_iterator(self):
 		"""
 		Iterate through channel numbers associated with respective x, y arrays
@@ -208,7 +210,7 @@ class FrequencyResponsePointsV1:
 		result = page([spectral])
 		result.show()
 
-	def display_db_vs_model(self, attenuation=1.0):
+	def display_db_vs_model(self):
 		"""
 		Trace the ratio of actual signal level to model signal level
 
@@ -224,13 +226,13 @@ class FrequencyResponsePointsV1:
 			return np.pi * x / np.sin(np.pi * x)
 
 		for chan, x, y in self.adc_ch_iterator():
-			ratio = 20*np.log10(y / ( self.model_y * attenuation * inv_sinc(self.model_x) ) )
+			ratio = 20*np.log10(y / ( self.model_y * self.attenuation * inv_sinc(self.model_x) ) )
 			spectral.trace(x, ratio, name=f"Channel {chan}")
 
 		result = page([spectral])
 		result.show()
 
-	def display_db_referenced(self, other, attenuation=1.0):
+	def display_db_referenced(self, reference):
 		"""
 		Trace power gain against a reference
 		"""
@@ -239,16 +241,16 @@ class FrequencyResponsePointsV1:
 		spectral.xtitle("MHz")
 		spectral.ytitle("dB")
 
-		assert self.chan_set == other.chan_set, "Channel set mismatch between datasets"
-		assert self.model_x.shape == other.model_x.shape, "Frequency set mismatch between datasets"
+		assert self.chan_set == reference.chan_set, "Channel set mismatch between datasets"
+		assert self.model_x.shape == reference.model_x.shape, "Frequency set mismatch between datasets"
 
 		for chan, x, u, v in zip(
 			self.chan_set,
 			self.adc_ch_x.values(),
 			self.adc_ch_y.values(),
-			other.adc_ch_y.values()
+			reference.adc_ch_y.values()
 		):
-			ratio = 20*np.log10( u / (v * attenuation) )
+			ratio = 20*np.log10( u / (v * reference.attenuation) )
 			spectral.trace(x, ratio, name=f"Channel {chan}")
 
 		result = page([spectral])
@@ -274,24 +276,24 @@ if args.dut and args.ref:
 	assert not args.mv, "--mv cannot be used with --ref"
 
 	a = FrequencyResponsePointsV1(args.dut, trim=trim)
-	b = FrequencyResponsePointsV1(args.ref, trim=trim)
+	b = FrequencyResponsePointsV1(args.ref, trim=trim, attenuation=attenuation)
 
 	if args.csv:
 		assert 0
 	else:
-		a.display_db_referenced(b, attenuation)
+		a.display_db_referenced(b)
 elif args.dut:
 	assert (args.model or args.raw or args.mv), "either --raw or --mv or --model must be specified with no --ref"
 	assert not (args.model and args.raw), "--raw and --model are mutually exclusive"
 	assert not (args.model and args.mv), "--mv and --model are mutually exclusive"
 
-	a = FrequencyResponsePointsV1(args.dut, trim=trim)
+	a = FrequencyResponsePointsV1(args.dut, trim=trim, attenuation=attenuation)
 
 	if args.csv:
 		assert 0
 	else:
 		if args.model:
-			a.display_db_vs_model(attenuation)
+			a.display_db_vs_model()
 		else:
 			if args.mv:
 				a.display_mv()
