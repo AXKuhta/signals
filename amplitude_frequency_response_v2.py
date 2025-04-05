@@ -14,60 +14,43 @@ import src.delay as delay
 import src.dds as dds
 
 from src.workflows.v1 import ModelSignalV1
-
 from src.schemas.v1 import *
-#from src.models.v1 import *
-
-#
-# Amplitude Frequency Response the 2nd:
-#
-# Two modes of operation:
-# - Without a reference
-# - Adjusted
-#
-# The reference-free mode:
-# - Prep
-# 	- Take a directory
-#	- Deserialize the preset
-#	- Glob the .ISEs
-# - Prep 2
-#	- Model signals from the preset
-#	- Estimate and eliminate delay
-# - Frequency Response
-#	- Associate time with frequency
-#	- Retain, say, 0.9 of time
-#		- Previously we've been retaining an explicitly specified frequency band
-#			- This creates ambiguity for fixed frequency pulses
-#				- They do not really have a band
-#	- Into the point array
-#	- Sort it
-#	- Plot it
-#
-# Whenever the adjusted mode is used:
-# - Extra method FrequencyResponsePointsV1
-# - Assert pulse set is the same
-# - No reason whatsoever to support different pulse sets
-# 	- While possible, do not want to deal with resampling
-#		- Though it may be less difficult than it seems
-#			- bins `x - x % 0.1`
-#			- new X np.unique(...)
-#			- gather x[b == 0.1]
-#				- for loop
-#				- stack
-# - Would entail a second instance of FrequencyResponsePointsV1
-# - Stick to single instance of FrequencyResponsePointsV1
-#
-
 
 class FrequencyResponsePointsV1:
 	"""
 	Application class to translate a folder of captures+metadata into frequency response points (x, y)
 
-	The class should support three display scenarios:
+	The class should support these display/csv scenarios:
 	- Raw ADC codes
 	- Signal level estimate
 	- dB against a model
-	- dB against a reference - done elsewhere
+	- dB against a reference
+
+	The pipeline design, top down:
+	- Read the metadata
+		- Parse JSON
+		- Verify schema
+	- Read the captures
+		- Glob all .ISEs
+		- Discard 0 Hz captures
+	- Detect active channels
+	- Pool amplitude-from-frequency points across descriptors
+		- Prepare a model signal
+		- Find associated captures
+		- For every active channel
+			- Average amplitude across repeated captures
+				- Estimate delay
+				- Eliminate delay
+				- Find amplitude
+				- Apply averaging
+			- Map time to frequency
+			- Discard samples outside pulse body
+				- Below 0.05*duration
+				- Above 0.95*duration
+				- To remove transients
+		- Apply pooling
+			- Join and sort
+			- Deals with overlap
 	"""
 
 	def __init__(self, location, trim=0.05):
