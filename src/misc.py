@@ -108,6 +108,17 @@ def ad9910_best_asf_fsc_v1(mv_rms):
 
 	assert 0
 
+def ad9910_inv_sinc(x, sysclk=1000*1000*1000):
+	"""
+	AD9910 sinc rolloff compensation
+
+	Takes:
+	x	frequency array in Hz
+	"""
+
+	x = x / sysclk
+	return np.pi * x / np.sin(np.pi * x)
+
 def lerp(u, v, w):
 	return (1 - w) * u + v * w
 

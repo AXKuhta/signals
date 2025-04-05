@@ -5,7 +5,7 @@ import json
 
 import numpy as np
 
-from src.misc import ad9910_sweep_bandwidth, parse_numeric_expr, parse_time_expr, parse_freq_expr, roll_lerp, ddc_cost_mv
+from src.misc import ad9910_sweep_bandwidth, ad9910_inv_sinc, parse_numeric_expr, parse_time_expr, parse_freq_expr, roll_lerp, ddc_cost_mv
 from src.delay import SpectralDelayEstimator
 from src.display import minmaxplot, page
 from src.touchstone import S2PFile
@@ -176,32 +176,93 @@ class FrequencyResponsePointsV1:
 			self.adc_ch_y.values()
 		)
 
+	def _write_csv(self, x, y, cols, filename):
+		"""
+		Internal helper function for writing csv
+		"""
+
+		assert all([np.all(v == x[0]) for v in x])
+
+		np.savetxt(
+			filename,
+			np.vstack([x[0]] + y).T,
+			comments="",
+			delimiter=",",
+			header=",".join(["freq_hz"] + cols)
+		)
+
 	def write_raw(self, filename):
 		"""
 		Encode adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time, as csv data
 		"""
 
-		x = list(self.adc_ch_x.values())[0]
+		x = list(self.adc_ch_x.values())
 		y = list(self.adc_ch_y.values())
+		cols = [f"ch{v}_adc" for v in self.chan_set]
 
-		table = np.vstack([x] + y).T
-
-		np.savetxt(filename, table, comments="", delimiter=",", header=",".join(["freq_hz"] + [f"ch{v}" for v in self.chan_set]))
+		self._write_csv(x, y, cols, filename)
 
 	def write_mv(self, filename):
 		"""
 		Save the estimate of signal level in mV rms as a function of frequency, as csv data
 		"""
 
-		x = list(self.adc_ch_x.values())[0]
+		x_ = []
+		y_ = []
+		cols = []
 
-		factor = ddc_cost_mv(x)
+		for chan, x, y in self.adc_ch_iterator():
+			factor = ddc_cost_mv(x)
 
-		y = [v*factor for v in self.adc_ch_y.values()]
+			x_.append(x)
+			y_.append(y*factor)
+			cols.append(f"ch{chan}_mv")
 
-		table = np.vstack([x] + y).T
+		self._write_csv(x_, y_, cols, filename)
 
-		np.savetxt(filename, table, comments="", delimiter=",", header=",".join(["freq_hz"] + [f"ch{v}" for v in self.chan_set]))
+	def write_db_vs_model(self, filename):
+		"""
+		Save the ratio of actual signal level to model signal level as csv data
+
+		Tries to compensate for DDC's and DDS's frequency response - but may be imperfect
+		"""
+
+		x_ = []
+		y_ = []
+		cols = []
+
+		for chan, x, y in self.adc_ch_iterator():
+			ratio = 20*np.log10(y / ( self.model_y * self.attenuation * ad9910_inv_sinc(self.model_x) ) )
+			x_.append(x)
+			y_.append(ratio)
+			cols.append(f"ch{chan}_db")
+
+		self._write_csv(x_, y_, cols, filename)
+
+	def write_db_referenced(self, reference, filename):
+		"""
+		Save power gain against a reference as csv data
+		"""
+
+		x_ = []
+		y_ = []
+		cols = []
+
+		assert self.chan_set == reference.chan_set, "Channel set mismatch between datasets"
+		assert self.model_x.shape == reference.model_x.shape, "Frequency set mismatch between datasets"
+
+		for chan, x, u, v in zip(
+			self.chan_set,
+			self.adc_ch_x.values(),
+			self.adc_ch_y.values(),
+			reference.adc_ch_y.values()
+		):
+			ratio = 20*np.log10( u / (v * reference.attenuation) )
+			x_.append(x)
+			y_.append(ratio)
+			cols.append(f"ch{chan}_db")
+
+		self._write_csv(x_, y_, cols, filename)
 
 	def display_raw(self):
 		"""
@@ -248,12 +309,8 @@ class FrequencyResponsePointsV1:
 		spectral.xtitle("MHz")
 		spectral.ytitle("dB")
 
-		def inv_sinc(x):
-			x = x / 1000 / 1000 / 1000
-			return np.pi * x / np.sin(np.pi * x)
-
 		for chan, x, y in self.adc_ch_iterator():
-			ratio = 20*np.log10(y / ( self.model_y * self.attenuation * inv_sinc(self.model_x) ) )
+			ratio = 20*np.log10(y / ( self.model_y * self.attenuation * ad9910_inv_sinc(self.model_x) ) )
 			spectral.trace(x, ratio, name=f"Channel {chan}")
 
 		result = page([spectral])
@@ -306,7 +363,7 @@ if args.dut and args.ref:
 	b = FrequencyResponsePointsV1(args.ref, trim=trim, attenuation=attenuation)
 
 	if args.csv:
-		assert 0
+		a.write_db_referenced(b, args.csv)
 	else:
 		a.display_db_referenced(b)
 elif args.dut:
@@ -318,7 +375,7 @@ elif args.dut:
 
 	if args.csv:
 		if args.model:
-			assert 0
+			a.write_db_vs_model(args.csv)
 		else:
 			if args.mv:
 				a.write_mv(args.csv)
