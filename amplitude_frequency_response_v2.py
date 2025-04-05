@@ -176,6 +176,18 @@ class FrequencyResponsePointsV1:
 			self.adc_ch_y.values()
 		)
 
+	def write_raw(self, filename):
+		"""
+		Encode adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time, as csv data
+		"""
+
+		x = list(self.adc_ch_x.values())[0]
+		y = list(self.adc_ch_y.values())
+
+		table = np.vstack([x] + y).T
+
+		np.savetxt(filename, table, comments="", delimiter=",", header=",".join(["freq_hz"] + [f"ch{v}" for v in self.chan_set]))
+
 	def display_raw(self):
 		"""
 		Trace adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time
@@ -290,7 +302,13 @@ elif args.dut:
 	a = FrequencyResponsePointsV1(args.dut, trim=trim, attenuation=attenuation)
 
 	if args.csv:
-		assert 0
+		if args.model:
+			assert 0
+		else:
+			if args.mv:
+				assert 0
+			else:
+				a.write_raw(args.csv)
 	else:
 		if args.model:
 			a.display_db_vs_model()
