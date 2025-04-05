@@ -188,6 +188,21 @@ class FrequencyResponsePointsV1:
 
 		np.savetxt(filename, table, comments="", delimiter=",", header=",".join(["freq_hz"] + [f"ch{v}" for v in self.chan_set]))
 
+	def write_mv(self, filename):
+		"""
+		Save the estimate of signal level in mV rms as a function of frequency, as csv data
+		"""
+
+		x = list(self.adc_ch_x.values())[0]
+
+		factor = ddc_cost_mv(x)
+
+		y = [v*factor for v in self.adc_ch_y.values()]
+
+		table = np.vstack([x] + y).T
+
+		np.savetxt(filename, table, comments="", delimiter=",", header=",".join(["freq_hz"] + [f"ch{v}" for v in self.chan_set]))
+
 	def display_raw(self):
 		"""
 		Trace adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time
@@ -306,7 +321,7 @@ elif args.dut:
 			assert 0
 		else:
 			if args.mv:
-				assert 0
+				a.write_mv(args.csv)
 			else:
 				a.write_raw(args.csv)
 	else:
