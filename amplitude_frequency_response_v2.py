@@ -242,6 +242,7 @@ class FrequencyResponsePointsV1:
 parser = argparse.ArgumentParser(description="Produces a plot or a csv file of amplitude frequency response.")
 parser.add_argument("--dut", help="path to a directory containing captures+metadata with test signals fed into device under test", required=True)
 parser.add_argument("--ref", help="path to a directory containing captures+metadata with reference signals (device under test bypassed)")
+parser.add_argument("--trim", help="specify the proportion of pulse head and tail to be discarded in time domain to remove transients, defaults to 0.05")
 parser.add_argument("--offset", help="specify how much extra gain or attenuation of reference signals should be factored in, e.g. 0.00498 or \"-46 dB\"")
 parser.add_argument("--csv", help="write results into a specified csv file")
 parser.add_argument("--model", help="[when no --ref] use an approximate model of reference signals instead of actual reference captures", action="store_true")
@@ -250,32 +251,36 @@ parser.add_argument("--mv", help="[when no --ref] display signal level in volts"
 args = parser.parse_args()
 
 attenuation = float(args.offset or "1.0")
+trim = float(args.trim or "0.05")
 
 if args.dut and args.ref:
 	assert not args.model, "--model cannot be used with --ref"
 	assert not args.raw, "--raw cannot be used with --ref"
 	assert not args.mv, "--mv cannot be used with --ref"
 
-	a = FrequencyResponsePointsV1(args.dut)
-	b = FrequencyResponsePointsV1(args.ref)
+	a = FrequencyResponsePointsV1(args.dut, trim=trim)
+	b = FrequencyResponsePointsV1(args.ref, trim=trim)
 
 	if args.csv:
 		assert 0
 	else:
 		a.display_db_referenced(b, attenuation)
 elif args.dut:
-	assert (args.model or args.raw), "either --raw or --model must be specified with no --ref"
+	assert (args.model or args.raw or args.mv), "either --raw or --mv or --model must be specified with no --ref"
 	assert not (args.model and args.raw), "--raw and --model are mutually exclusive"
-	assert not (args.model and args.mv), "--mv cannot be used with --model"
+	assert not (args.model and args.mv), "--mv and --model are mutually exclusive"
 
-	a = FrequencyResponsePointsV1(args.dut)
+	a = FrequencyResponsePointsV1(args.dut, trim=trim)
 
-	if args.model:
-		if args.csv:
-			assert 0
-		else:
-			a.display_db_vs_model(attenuation)
-	else:
+	if args.csv:
 		assert 0
+	else:
+		if args.model:
+			a.display_db_vs_model(attenuation)
+		else:
+			if args.mv:
+				a.display_mv()
+			else:
+				pass
 else:
 	assert 0
