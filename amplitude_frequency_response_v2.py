@@ -174,6 +174,21 @@ class FrequencyResponsePointsV1:
 			self.adc_ch_y.values()
 		)
 
+	def display_raw(self):
+		"""
+		Trace adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time
+		"""
+
+		spectral = minmaxplot("Hz")
+		spectral.xtitle("Frequency")
+		spectral.ytitle("ADC code")
+
+		for chan, x, y in self.adc_ch_iterator():
+			spectral.trace(x, y, name=f"Channel {chan}")
+
+		result = page([spectral])
+		result.show()
+
 	def display_mv(self):
 		"""
 		Trace the estimate of signal level in mV rms as a function of frequency
@@ -281,6 +296,6 @@ elif args.dut:
 			if args.mv:
 				a.display_mv()
 			else:
-				pass
+				a.display_raw()
 else:
 	assert 0
