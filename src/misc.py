@@ -1,6 +1,22 @@
 from math import floor, ceil
 import numpy as np
 
+def downsample(x, y, roundto=0.1):
+	"""
+	Sample rate conversion
+
+	Rounds every x to a factor of `roundto` then groups `y` by it
+
+	Behavior undefined if x is not monotonic (i.e. x is not sorted)
+	"""
+
+	# https://stackoverflow.com/questions/38013778/is-there-any-numpy-group-by-function
+	repeat = np.round(x/roundto)*roundto
+	unique, indices = np.unique(repeat, return_index=True)
+
+	return unique, np.split(y, indices[1:])
+
+
 #
 # AD9910 sweep calculations
 #
