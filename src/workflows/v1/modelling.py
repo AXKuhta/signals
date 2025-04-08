@@ -2,7 +2,7 @@
 import numpy as np
 
 from src.delay import SpectralDelayEstimator
-from src.misc import ad9910_sweep_bandwidth, ad9910_best_asf_fsc_v0, ad9910_vrms_v1, ad9910_inv_sinc, parse_freq_expr, parse_volt_expr, parse_time_expr, ddc_cost_mv
+from src.misc import ad9910_sweep_bandwidth, ad9910_best_asf_fsc_v1, ad9910_vrms_v1, ad9910_inv_sinc, parse_freq_expr, parse_volt_expr, parse_time_expr, ddc_cost_mv
 import src.dds as dds
 
 #
@@ -49,7 +49,9 @@ class ModelSignalV1:
 	# Adjusts how much voltage is demanded at AD9910s
 	# DAC output to factor in losses in the lowpass filter
 	# and to compensate for DAC's own imperfections
-	signal_level_factor = 1/0.954992586
+	#
+	# For now left at 1
+	signal_level_factor = 1.0
 
 	def __init__(self, descriptor, ddc, trim=0.05):
 		"""
@@ -72,7 +74,7 @@ class ModelSignalV1:
 		# FIXME: we should just be able to use the level directly if the signal generator really was properly calibrated
 		# As of now it isn't
 		level = parse_volt_expr(descriptor.level) * self.signal_level_factor
-		asf, fsc = ad9910_best_asf_fsc_v0(level)
+		asf, fsc = ad9910_best_asf_fsc_v1(level)
 		level = ad9910_vrms_v1(asf, fsc) / self.signal_level_factor
 
 		tokens = descriptor.emit.split(" ")
