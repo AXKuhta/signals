@@ -232,7 +232,7 @@ class FrequencyResponsePointsV1:
 		cols = []
 
 		for chan, x, y in self.adc_ch_iterator():
-			ratio = 20*np.log10(y / ( self.model_y * self.attenuation * ad9910_inv_sinc(self.model_x) ) )
+			ratio = 20*np.log10( y / ( self.model_y * self.attenuation) )
 			x_.append(x)
 			y_.append(ratio)
 			cols.append(f"ch{chan}_db")
@@ -310,7 +310,7 @@ class FrequencyResponsePointsV1:
 		spectral.ytitle("dB")
 
 		for chan, x, y in self.adc_ch_iterator():
-			ratio = 20*np.log10(y / ( self.model_y * self.attenuation * ad9910_inv_sinc(self.model_x) ) )
+			ratio = 20*np.log10( y / (self.model_y * self.attenuation) )
 			spectral.trace(x, ratio, name=f"Channel {chan}")
 
 		result = page([spectral])

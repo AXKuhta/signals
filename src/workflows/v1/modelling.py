@@ -2,7 +2,7 @@
 import numpy as np
 
 from src.delay import SpectralDelayEstimator
-from src.misc import ad9910_sweep_bandwidth, ad9910_best_asf_fsc_v0, ad9910_vrms_v1, parse_freq_expr, parse_volt_expr, parse_time_expr, ddc_cost_mv
+from src.misc import ad9910_sweep_bandwidth, ad9910_best_asf_fsc_v0, ad9910_vrms_v1, ad9910_inv_sinc, parse_freq_expr, parse_volt_expr, parse_time_expr, ddc_cost_mv
 import src.dds as dds
 
 #
@@ -99,6 +99,7 @@ class ModelSignalV1:
 
 			# DDC's perceived signal level
 			amplitude = level * 1000 / ddc_cost_mv(temporal_freq + center_frequency)
+			amplitude /= ad9910_inv_sinc(temporal_freq + center_frequency, sysclk=sysclk)
 			model_sweep *= amplitude
 
 			#
