@@ -15,7 +15,7 @@ parser.add_argument("--b", help="ad9910 b parameter, usually 1", required=True)
 parser.add_argument("--level", help="signal level e.g. \"60 mV\"", required=True)
 args = parser.parse_args()
 
-delay = args.delay or "1 us"
+delay = args.delay or "0 us"
 duration = args.duration or "900 us"
 
 parse_time_expr(delay)
