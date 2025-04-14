@@ -183,10 +183,57 @@ class FrequencyResponsePointsV1:
 			self.adc_ch_y.values()
 		)
 
-	def _write_csv(self, x, y, cols, filename):
+	def csv(self, mode, filename, reference=None):
 		"""
-		Internal helper function for writing csv
+		Save frequency response to file
+
+		Mode.RAW		Encode adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time, as csv data
+		Mode.MV			Save the estimate of signal level in mV rms as a function of frequency, as csv data
+		Model.MODEL		Save the ratio of actual signal level to model signal level as csv data;
+					Tries to compensate for DDC's and DDS's frequency response-
+					but may be imperfect
+		Model.REFERENCED	Save power gain against a reference as csv data
 		"""
+
+		x = []
+		y = []
+		cols = []
+
+		if mode == Mode.RAW:
+			x = list(self.adc_ch_x.values())
+			y = list(self.adc_ch_y.values())
+			cols = [f"ch{v}_adc" for v in self.chan_set]
+
+		elif mode == Mode.MV:
+			for chan, x_, y_ in self.adc_ch_iterator():
+				factor = ddc_cost_mv(x_)
+
+				x.append(x_)
+				y.append(y_*factor)
+				cols.append(f"ch{chan}_mv")
+
+		elif mode == Mode.MODEL:
+			for chan, x_, y_ in self.adc_ch_iterator():
+				ratio = 20*np.log10( y_ / ( self.model_y * self.attenuation) )
+				x.append(x_)
+				y.append(ratio)
+				cols.append(f"ch{chan}_db")
+
+		elif mode == Mode.REFERENCED:
+			assert self.chan_set == reference.chan_set, "Channel set mismatch between datasets"
+			assert self.model_x.shape == reference.model_x.shape, "Frequency set mismatch between datasets"
+
+			for chan, x_, u, v in zip(
+				self.chan_set,
+				self.adc_ch_x.values(),
+				self.adc_ch_y.values(),
+				reference.adc_ch_y.values()
+			):
+				ratio = 20*np.log10( u / (v * reference.attenuation) )
+				x.append(x_)
+				y.append(ratio)
+				cols.append(f"ch{chan}_db")
+
 
 		assert all([np.all(v == x[0]) for v in x])
 
@@ -197,9 +244,6 @@ class FrequencyResponsePointsV1:
 			delimiter=",",
 			header=",".join(["freq_hz"] + cols)
 		)
-
-	def csv(self):
-		pass
 
 	def display(self, mode, reference=None):
 		"""
@@ -258,79 +302,6 @@ class FrequencyResponsePointsV1:
 		result = page([spectral])
 		result.show()
 
-	def write_raw(self, filename):
-		"""
-		Encode adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time, as csv data
-		"""
-
-		x = list(self.adc_ch_x.values())
-		y = list(self.adc_ch_y.values())
-		cols = [f"ch{v}_adc" for v in self.chan_set]
-
-		self._write_csv(x, y, cols, filename)
-
-	def write_mv(self, filename):
-		"""
-		Save the estimate of signal level in mV rms as a function of frequency, as csv data
-		"""
-
-		x_ = []
-		y_ = []
-		cols = []
-
-		for chan, x, y in self.adc_ch_iterator():
-			factor = ddc_cost_mv(x)
-
-			x_.append(x)
-			y_.append(y*factor)
-			cols.append(f"ch{chan}_mv")
-
-		self._write_csv(x_, y_, cols, filename)
-
-	def write_db_vs_model(self, filename):
-		"""
-		Save the ratio of actual signal level to model signal level as csv data
-
-		Tries to compensate for DDC's and DDS's frequency response - but may be imperfect
-		"""
-
-		x_ = []
-		y_ = []
-		cols = []
-
-		for chan, x, y in self.adc_ch_iterator():
-			ratio = 20*np.log10( y / ( self.model_y * self.attenuation) )
-			x_.append(x)
-			y_.append(ratio)
-			cols.append(f"ch{chan}_db")
-
-		self._write_csv(x_, y_, cols, filename)
-
-	def write_db_referenced(self, reference, filename):
-		"""
-		Save power gain against a reference as csv data
-		"""
-
-		x_ = []
-		y_ = []
-		cols = []
-
-		assert self.chan_set == reference.chan_set, "Channel set mismatch between datasets"
-		assert self.model_x.shape == reference.model_x.shape, "Frequency set mismatch between datasets"
-
-		for chan, x, u, v in zip(
-			self.chan_set,
-			self.adc_ch_x.values(),
-			self.adc_ch_y.values(),
-			reference.adc_ch_y.values()
-		):
-			ratio = 20*np.log10( u / (v * reference.attenuation) )
-			x_.append(x)
-			y_.append(ratio)
-			cols.append(f"ch{chan}_db")
-
-		self._write_csv(x_, y_, cols, filename)
-
 parser = argparse.ArgumentParser(description="Produces a plot or a csv file of amplitude frequency response.")
 parser.add_argument("--dut", help="path to a directory containing captures+metadata with test signals fed into device under test", required=True)
 parser.add_argument("--ref", help="path to a directory containing captures+metadata with reference signals (device under test bypassed)")
@@ -354,7 +325,7 @@ if args.dut and args.ref:
 	b = FrequencyResponsePointsV1(args.ref, trim=trim, attenuation=attenuation)
 
 	if args.csv:
-		a.write_db_referenced(b, args.csv)
+		a.csv(Mode.REFERENCED, args.csv, b)
 	else:
 		a.display(Mode.REFERENCED, b)
 elif args.dut:
@@ -366,12 +337,12 @@ elif args.dut:
 
 	if args.csv:
 		if args.model:
-			a.write_db_vs_model(args.csv)
+			a.csv(Mode.MODEL, args.csv)
 		else:
 			if args.mv:
-				a.write_mv(args.csv)
+				a.csv(Mode.MV, args.csv)
 			else:
-				a.write_raw(args.csv)
+				a.csv(Mode.RAW, args.csv)
 	else:
 		if args.model:
 			a.display(Mode.MODEL)
