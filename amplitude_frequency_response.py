@@ -1,4 +1,5 @@
 
+from enum import Enum, auto
 from glob import glob
 import argparse
 import json
@@ -15,6 +16,12 @@ import src.dds as dds
 
 from src.workflows.v1 import ModelSignalV1
 from src.schemas.v1 import *
+
+class Mode(Enum):
+	RAW = auto()
+	MV = auto()
+	MODEL = auto()
+	REFERENCED = auto()
 
 class FrequencyResponsePointsV1:
 	"""
@@ -191,6 +198,66 @@ class FrequencyResponsePointsV1:
 			header=",".join(["freq_hz"] + cols)
 		)
 
+	def csv(self):
+		pass
+
+	def display(self, mode, reference=None):
+		"""
+		Display the frequency response visually
+
+		Mode.RAW 		Trace adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time
+		Mode.MV			Trace the estimate of signal level in mV rms as a function of frequency
+		Mode.MODEL		Trace the ratio of actual signal level to model signal level;
+					Tries to compensate for DDC's and DDS's frequency response-
+					but may be imperfect
+		Mode.REFERENCED		Trace power gain against a reference
+		"""
+
+		spectral = minmaxplot("Hz")
+		spectral.xtitle("Frequency")
+
+		if mode == Mode.RAW:
+			spectral.ytitle("ADC code")
+
+			for chan, x, y in self.adc_ch_iterator():
+				spectral.trace(x, y, name=f"Channel {chan}")
+
+		elif mode == Mode.MV:
+			spectral.ytitle("mV")
+
+			# Postprocessing: voltage scale in mv
+			# This also removes the DDC's overall influence on frequency response
+			for chan, x, y in self.adc_ch_iterator():
+				spectral.trace(x, y * ddc_cost_mv(x), name=f"Channel {chan}")
+
+		elif mode == Mode.MODEL:
+			spectral.ytitle("dB")
+
+			for chan, x, y in self.adc_ch_iterator():
+				ratio = 20*np.log10( y / (self.model_y * self.attenuation) )
+				spectral.trace(x, ratio, name=f"Channel {chan}")
+
+		elif mode == Mode.REFERENCED:
+			spectral.ytitle("dB")
+
+			assert self.chan_set == reference.chan_set, "Channel set mismatch between datasets"
+			assert self.model_x.shape == reference.model_x.shape, "Frequency set mismatch between datasets"
+
+			for chan, x, u, v in zip(
+				self.chan_set,
+				self.adc_ch_x.values(),
+				self.adc_ch_y.values(),
+				reference.adc_ch_y.values()
+			):
+				ratio = 20*np.log10( u / (v * reference.attenuation) )
+				spectral.trace(x, ratio, name=f"Channel {chan}")
+
+		else:
+			assert 0
+
+		result = page([spectral])
+		result.show()
+
 	def write_raw(self, filename):
 		"""
 		Encode adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time, as csv data
@@ -264,82 +331,6 @@ class FrequencyResponsePointsV1:
 
 		self._write_csv(x_, y_, cols, filename)
 
-	def display_raw(self):
-		"""
-		Trace adc codes - that is |q(t)| where q is iq, vs f(t) where f is frequency given time
-		"""
-
-		spectral = minmaxplot("Hz")
-		spectral.xtitle("Frequency")
-		spectral.ytitle("ADC code")
-
-		for chan, x, y in self.adc_ch_iterator():
-			spectral.trace(x, y, name=f"Channel {chan}")
-
-		result = page([spectral])
-		result.show()
-
-	def display_mv(self):
-		"""
-		Trace the estimate of signal level in mV rms as a function of frequency
-		"""
-
-		spectral = minmaxplot("Hz")
-		spectral.xtitle("MHz")
-		spectral.ytitle("mV")
-
-		for chan, x, y in self.adc_ch_iterator():
-			# Postprocessing: voltage scale in mv
-			# This also removes the DDC's overall influence on frequency response
-			factor = ddc_cost_mv(x)
-
-			spectral.trace(x, y * factor, name=f"Channel {chan}")
-
-		result = page([spectral])
-		result.show()
-
-	def display_db_vs_model(self):
-		"""
-		Trace the ratio of actual signal level to model signal level
-
-		Tries to compensate for DDC's and DDS's frequency response - but may be imperfect
-		"""
-
-		spectral = minmaxplot("Hz")
-		spectral.xtitle("MHz")
-		spectral.ytitle("dB")
-
-		for chan, x, y in self.adc_ch_iterator():
-			ratio = 20*np.log10( y / (self.model_y * self.attenuation) )
-			spectral.trace(x, ratio, name=f"Channel {chan}")
-
-		result = page([spectral])
-		result.show()
-
-	def display_db_referenced(self, reference):
-		"""
-		Trace power gain against a reference
-		"""
-
-		spectral = minmaxplot("Hz")
-		spectral.xtitle("MHz")
-		spectral.ytitle("dB")
-
-		assert self.chan_set == reference.chan_set, "Channel set mismatch between datasets"
-		assert self.model_x.shape == reference.model_x.shape, "Frequency set mismatch between datasets"
-
-		for chan, x, u, v in zip(
-			self.chan_set,
-			self.adc_ch_x.values(),
-			self.adc_ch_y.values(),
-			reference.adc_ch_y.values()
-		):
-			ratio = 20*np.log10( u / (v * reference.attenuation) )
-			spectral.trace(x, ratio, name=f"Channel {chan}")
-
-		result = page([spectral])
-		result.show()
-
 parser = argparse.ArgumentParser(description="Produces a plot or a csv file of amplitude frequency response.")
 parser.add_argument("--dut", help="path to a directory containing captures+metadata with test signals fed into device under test", required=True)
 parser.add_argument("--ref", help="path to a directory containing captures+metadata with reference signals (device under test bypassed)")
@@ -365,7 +356,7 @@ if args.dut and args.ref:
 	if args.csv:
 		a.write_db_referenced(b, args.csv)
 	else:
-		a.display_db_referenced(b)
+		a.display(Mode.REFERENCED, b)
 elif args.dut:
 	assert (args.model or args.raw or args.mv), "either --raw or --mv or --model must be specified with no --ref"
 	assert not (args.model and args.raw), "--raw and --model are mutually exclusive"
@@ -383,11 +374,11 @@ elif args.dut:
 				a.write_raw(args.csv)
 	else:
 		if args.model:
-			a.display_db_vs_model()
+			a.display(Mode.MODEL)
 		else:
 			if args.mv:
-				a.display_mv()
+				a.display(Mode.MV)
 			else:
-				a.display_raw()
+				a.display(Mode.RAW)
 else:
 	assert 0
