@@ -56,7 +56,7 @@ class PhaseDeltaPointsV1:
 			- Deals with overlap
 	"""
 
-	def __init__(self, location, idx_a, idx_b, trim=0.05):
+	def __init__(self, location, idx_a, idx_b, trim=0.05, radians=False):
 		with open(f"{location}/preset.json") as f:
 			obj = json.load(f)
 
@@ -195,6 +195,8 @@ class PhaseDeltaPointsV1:
 		self.idx_a = idx_a
 		self.idx_b = idx_b
 
+		self.radians = radians
+
 		self.model_x = np.hstack(model_x)
 		self.model_y = np.hstack(model_y)
 
@@ -212,20 +214,37 @@ class PhaseDeltaPointsV1:
 			self.adc_ch_y.values()
 		)
 
-	def csv(self, filename):
+	def csv(self, filename, fine):
 		"""
 		Save phase delta to file
 		"""
 
+		cols = ["freq_hz"]
+
+		if self.radians:
+			cols.append(f"ch{self.idx_a}_minus_ch{self.idx_b}_phase_delta_radians")
+			factor = 1.0
+		else:
+			cols.append(f"ch{self.idx_a}_minus_ch{self.idx_b}_phase_delta_degrees")
+			factor = 180.0 / np.pi
+
+		if fine:
+			data = np.vstack([
+				self.fine_delta_x,
+				self.fine_delta_y * factor
+			]).T
+		else:
+			data = np.vstack([
+				self.coarse_delta_x,
+				self.coarse_delta_y * factor
+			]).T
+
 		np.savetxt(
 			filename,
-			np.vstack([
-				self.fine_delta_x,
-				self.fine_delta_y
-			]).T,
+			data,
 			comments="",
 			delimiter=",",
-			header=",".join(["freq_hz", f"ch{self.idx_a}_minus_ch{self.idx_b}_phase_delta_radians"])
+			header=",".join(cols)
 		)
 
 	def display(self):
@@ -235,18 +254,24 @@ class PhaseDeltaPointsV1:
 
 		spectral = minmaxplot("Hz")
 		spectral.xtitle("Frequency")
-		spectral.ytitle("Radians")
+
+		if self.radians:
+			spectral.ytitle("Radians")
+			factor = 1.0
+		else:
+			spectral.ytitle("Degrees")
+			factor = 180.0 / np.pi
 
 		spectral.trace(
 			self.fine_delta_x,
-			self.fine_delta_y,
-			error_band=[self.fine_delta_upper, self.fine_delta_lower],
+			self.fine_delta_y * factor,
+			error_band=[self.fine_delta_upper * factor, self.fine_delta_lower * factor],
 			name=f"CH{self.idx_a}−CH{self.idx_b} Fine"
 		)
 
 		spectral.trace(
 			self.coarse_delta_x,
-			self.coarse_delta_y,
+			self.coarse_delta_y * factor,
 			name=f"CH{self.idx_a}−CH{self.idx_b} Coarse"
 		)
 
@@ -257,15 +282,17 @@ parser = argparse.ArgumentParser(description="Produces a plot or a csv file of p
 parser.add_argument("--location", help="path to a directory containing captures+metadata with test signals fed into device under test", required=True)
 parser.add_argument("--channels", help="specify a channel pair pattern a,b to be used when obtaining a phase delta; a will have b subtracted from it", required=True)
 parser.add_argument("--trim", help="specify the proportion of pulse head and tail to be discarded in time domain to remove transients, defaults to 0.05")
+parser.add_argument("--fine", help="[When --csv used] save fine curve instead of coarse, results in a lot more data", action="store_true")
+parser.add_argument("--rad", help="use radians instead of degrees", action="store_true")
 parser.add_argument("--csv", help="write results into a specified csv file")
 args = parser.parse_args()
 
 trim = float(args.trim or "0.05")
 idx_a, idx_b = [int(x) for x in args.channels.split(",")]
 
-a = PhaseDeltaPointsV1(args.location, idx_a, idx_b, trim=trim)
+a = PhaseDeltaPointsV1(args.location, idx_a, idx_b, trim=trim, radians=args.rad)
 
 if args.csv:
-	a.csv(args.csv)
+	a.csv(args.csv, args.fine)
 else:
 	a.display()
