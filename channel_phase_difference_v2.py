@@ -87,9 +87,15 @@ class PhaseDeltaPointsV1:
 		assert idx_a in chan_set, "Channel not available"
 		assert idx_b in chan_set, "Channel not available"
 
-		# Fine-grained phase delta points
+		# High density phase delta points
 		fine_delta_x = []
 		fine_delta_y = []
+		fine_delta_upper = []
+		fine_delta_lower = []
+
+		# Low density
+		coarse_delta_x = []
+		coarse_delta_y = []
 
 		model_x = []
 		model_y = []
@@ -144,6 +150,7 @@ class PhaseDeltaPointsV1:
 			u = np.vstack(u_)
 			v = np.vstack(v_)
 
+			coarse = np.angle( np.sum(u * v.conj(), 1) ).mean(0)
 			deltas = np.angle( u * v.conj() )
 
 			delta = deltas.mean(0)
@@ -152,20 +159,37 @@ class PhaseDeltaPointsV1:
 
 			x = signal.temporal_freq[indices] + tune
 			y = delta[indices]
+			upper = upper[indices]
+			lower = lower[indices]
 
 			fine_delta_x.append(x)
 			fine_delta_y.append(y)
+			fine_delta_upper.append(upper)
+			fine_delta_lower.append(lower)
+
+			coarse_delta_x.append(tune)
+			coarse_delta_y.append(coarse)
+
 
 		# Second pass over the data to sort it - this deals with overlap
 		#################################################################################################
 		x = np.hstack(fine_delta_x)
 		y = np.hstack(fine_delta_y)
+		upper = np.hstack(fine_delta_upper)
+		lower = np.hstack(fine_delta_lower)
 
 		x, indices = np.sort(x), np.argsort(x)
 		y = y[indices]
+		upper = upper[indices]
+		lower = lower[indices]
 
 		self.fine_delta_x = x
 		self.fine_delta_y = y
+		self.fine_delta_upper = upper
+		self.fine_delta_lower = lower
+
+		self.coarse_delta_x = np.hstack(coarse_delta_x)
+		self.coarse_delta_y = np.hstack(coarse_delta_y)
 
 		self.chan_set = chan_set
 		self.idx_a = idx_a
@@ -216,7 +240,14 @@ class PhaseDeltaPointsV1:
 		spectral.trace(
 			self.fine_delta_x,
 			self.fine_delta_y,
-			name=f"CH{self.idx_a}−CH{self.idx_b}"
+			error_band=[self.fine_delta_upper, self.fine_delta_lower],
+			name=f"CH{self.idx_a}−CH{self.idx_b} Fine"
+		)
+
+		spectral.trace(
+			self.coarse_delta_x,
+			self.coarse_delta_y,
+			name=f"CH{self.idx_a}−CH{self.idx_b} Coarse"
 		)
 
 		result = page([spectral])
