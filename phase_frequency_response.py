@@ -30,13 +30,28 @@ class PhaseFrequencyResponsePointsV1:
 		- Does not restart on trigger
 		- Trigger merely sets a "capture pending" flag
 		- Flag is effective next output of decimator
-	- Dechirping will produce up to 500 kHz / 900 us * 200 ns = 111.[1] Hz tone
-	- Will amount to 2*pi radian * 111.1 Hz * 900 us to deg = 36 deg travel
-	- Where there really should have been 0 deg travel
+	- What is the effect of delay on phase?
+		- May be thought of in terms of Dechirping
+			- Will produce up to 500 kHz / 900 us * 200 ns = 111.[1] Hz tone
+			- Will amount to 2*pi radian * 111.1 Hz * 900 us to deg = 36 deg travel
+			- Where there really should have been 0 deg travel
+		- May be thought of in terms of instanteneous frequency
+			- Zero Hz will not be affected by delay whatsoever
+			- For others, rad/s * delay extra angle introduced
+			- 2 pi radians 250 kHz 200 ns to deg = 18 deg
+	- Moreover, the DDC has a random phase offset problem
+		- The generator is known to produce repeatable waveforms
+		- Yet the captures have a random phase offset
+		- Meaning, the DDC's LO state different
+		- Either the result of triggering disparity
+		- Or the local oscillator is free-running
+		- Therefore it's impossible to tell the effect of DUT on phase
+		- Unless we can also tell the effect of DDC
 	- To fight this off two DDC channels must be used
 	- They are not 200 ns apart, they are coherent
 	- Treating one as incident
 	- The other as transmitted
+	- End up with a VNA
 	- Reference run
 		- Splitter	incident
 		- Thru		transmitted
@@ -173,35 +188,52 @@ class PhaseFrequencyResponsePointsV1:
 		self.model_x = np.hstack(model_x)
 		self.model_y = np.hstack(model_y)
 
+		self.idx_a = idx_a
+		self.idx_b = idx_b
 		self.radians = radians
 
 	def csv(self, mode, filename, reference=None):
-		x = []
-		y = []
+		"""
+		Store phase response into a csv file
+		"""
+
 		cols = ["freq_hz"]
 
 		if self.radians:
 			factor = 1.0
+			unit = "radians"
 		else:
+			unit = "degrees"
 			factor = 180.0 / np.pi
 
-
 		if mode == Mode.NO_REFERENCE:
-			assert 0
+			cols.append(f"ch{self.idx_a}_no_reference_phase_response_{unit}")
+			data = np.vstack([
+				self.q_x,
+				np.angle(self.q_y) * factor
+			]).T
 		elif mode == Mode.REFERENCED:
-			assert 0
+			cols.append(f"ch{self.idx_a}_phase_response_{unit}")
+			data = np.vstack([
+				self.q_x,
+				np.angle( self.q_y * reference.q_y.conj() ) * factor
+			]).T
 		else:
 			assert 0
 
 		np.savetxt(
 			filename,
-			np.vstack([x[0]] + y).T,
+			data,
 			comments="",
 			delimiter=",",
 			header=",".join(cols)
 		)
 
 	def display(self, mode, reference=None):
+		"""
+		Display phase response visually
+		"""
+
 		spectral = minmaxplot("Hz")
 		spectral.xtitle("Frequency")
 
@@ -241,7 +273,7 @@ if args.ref:
 	b = PhaseFrequencyResponsePointsV1(args.ref, idx_a, idx_b, trim=trim, radians=args.rad)
 
 	if args.csv:
-		a.csv(Mode.REFERENCED, arg.csv, b)
+		a.csv(Mode.REFERENCED, args.csv, b)
 	else:
 		a.display(Mode.REFERENCED, b)
 
@@ -249,6 +281,6 @@ else:
 	a = PhaseFrequencyResponsePointsV1(args.dut, idx_a, idx_b, trim=trim, radians=args.rad)
 
 	if args.csv:
-		a.csv(Mode.NO_REFERENCE, arg.csv)
+		a.csv(Mode.NO_REFERENCE, args.csv)
 	else:
 		a.display(Mode.NO_REFERENCE)
