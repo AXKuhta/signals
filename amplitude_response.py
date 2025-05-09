@@ -258,13 +258,13 @@ class FrequencyResponsePointsV1:
 		"""
 
 		spectral = minmaxplot("Hz")
-		spectral.xtitle("Frequency")
+		spectral.xtitle("Частота")
 
 		if mode == Mode.RAW:
-			spectral.ytitle("ADC code")
+			spectral.ytitle("Код АЦП")
 
 			for chan, x, y in self.adc_ch_iterator():
-				spectral.trace(x, y, name=f"Channel {chan}")
+				spectral.trace(x, y, name=f"Канал {chan}")
 
 		elif mode == Mode.MV:
 			spectral.ytitle("mV")
@@ -272,14 +272,14 @@ class FrequencyResponsePointsV1:
 			# Postprocessing: voltage scale in mv
 			# This also removes the DDC's overall influence on frequency response
 			for chan, x, y in self.adc_ch_iterator():
-				spectral.trace(x, y * ddc_cost_mv(x), name=f"Channel {chan}")
+				spectral.trace(x, y * ddc_cost_mv(x), name=f"Канал {chan}")
 
 		elif mode == Mode.MODEL:
 			spectral.ytitle("dB")
 
 			for chan, x, y in self.adc_ch_iterator():
 				ratio = 20*np.log10( y / (self.model_y * self.attenuation) )
-				spectral.trace(x, ratio, name=f"Channel {chan}")
+				spectral.trace(x, ratio, name=f"Канал {chan}")
 
 		elif mode == Mode.REFERENCED:
 			spectral.ytitle("dB")
@@ -294,7 +294,7 @@ class FrequencyResponsePointsV1:
 				reference.adc_ch_y.values()
 			):
 				ratio = 20*np.log10( u / (v * reference.attenuation) )
-				spectral.trace(x, ratio, name=f"Channel {chan}")
+				spectral.trace(x, ratio, name=f"Канал {chan}")
 
 		else:
 			assert 0

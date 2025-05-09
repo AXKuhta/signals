@@ -235,13 +235,13 @@ class PhaseFrequencyResponsePointsV1:
 		"""
 
 		spectral = minmaxplot("Hz")
-		spectral.xtitle("Frequency")
+		spectral.xtitle("Частота")
 
 		if self.radians:
 			spectral.ytitle("Radians")
 			factor = 1.0
 		else:
-			spectral.ytitle("Degrees")
+			spectral.ytitle("Градусы")
 			factor = 180.0 / np.pi
 
 		if mode == Mode.NO_REFERENCE:
