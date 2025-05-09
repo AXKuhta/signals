@@ -1,8 +1,9 @@
 
 import json
 
-from src.misc import parse_angle_expr, parse_time_expr, parse_freq_expr
 from .preset_v1 import PresetInterpreterDDCAndCalibratorV1
+from src.misc import parse_angle_expr, parse_time_expr, parse_freq_expr
+from src.schemas.v2 import *
 
 class PresetInterpreterDDCAndCalibratorV2(PresetInterpreterDDCAndCalibratorV1):
 	"""
@@ -22,22 +23,22 @@ class PresetInterpreterDDCAndCalibratorV2(PresetInterpreterDDCAndCalibratorV1):
 		]
 	} }
 	"""
-	def __init__(self, init):
-		self.init = init
+	def __init__(self, preset):
+		self.preset = JsonDDCAndCalibratorV2.deserialize(preset)
 		self.prep_metadata()
 		self.prep_ddc_config()
 		self.prep_ddc_frequency_table()
 		self.prep_calibrator_command_sequence()
 
 	def prep_calibrator_command_sequence(self):
-		signals = self.init.get("signals")
+		signals = self.preset.signals
 		sequence = []
 
 		sequence.append("seq stop")
 		sequence.append("seq reset")
 
 		for signal in signals:
-			sequence.append("set_level " + signal.get("level"))
+			sequence.append("set_level " + signal.level)
 			sequence.append("seq json " + self.translate_to_json_payload(signal) )
 
 		self.calibrator_command_sequence = sequence
@@ -108,11 +109,11 @@ class PresetInterpreterDDCAndCalibratorV2(PresetInterpreterDDCAndCalibratorV1):
 
 		fstep = 1000*1000*1000 / 2**32
 
-		for chip in signal.get("emit"):
-			hold_ns = round( parse_time_expr( chip.get("hold"), into="ns" ) )
-			asf = round(16383 * float( chip.get("amplitude") ))
-			ftw = round(parse_freq_expr(chip.get("frequency")) / fstep)
-			pow = round(65535 * parse_angle_expr(chip.get("phase"), into="deg") / 360.0 )
+		for chip in signal.emit:
+			hold_ns = round( parse_time_expr( chip.hold, into="ns" ) )
+			asf = round(16383 * float( chip.amplitude ))
+			ftw = round(parse_freq_expr(chip.frequency) / fstep)
+			pow = round(65535 * parse_angle_expr(chip.phase, into="deg") / 360.0 )
 
 			insert(hold_ns, asf, ftw, pow)
 
