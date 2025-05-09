@@ -5,6 +5,7 @@ import os
 
 from .calibrator import Calibrator
 from src.misc import parse_freq_expr
+from src.schemas.v1 import *
 
 class PresetInterpreterDDCAndCalibratorV1:
 	"""
@@ -44,8 +45,8 @@ class PresetInterpreterDDCAndCalibratorV1:
 	Specifically, the added complexity would be in having interpreter dispatch inside an interpreter
 	"""
 
-	def __init__(self, init):
-		self.init = init
+	def __init__(self, preset):
+		self.preset = JsonDDCAndCalibratorV1.deserialize(preset)
 		self.prep_metadata()
 		self.prep_ddc_config()
 		self.prep_ddc_frequency_table()
@@ -61,14 +62,14 @@ class PresetInterpreterDDCAndCalibratorV1:
 		dirname = f"calibrator_v1_{ts_str}"
 		dirpath = f"c:/calibrator_data_v1/{dirname}"
 
-		self.preset = json.dumps( {"ddc-and-calibrator-v1": self.init}, indent=2 )
+		self.preset_json = json.dumps( {"ddc-and-calibrator-v1": self.preset.serialize() }, indent=2 )
 		self.dirpath = dirpath
 
 	def write_metadata(self):
 		os.mkdir(self.dirpath)
 
 		with open(f"{self.dirpath}/preset.json", "w") as f:
-			f.write(self.preset)
+			f.write(self.preset_json)
 
 	##############################################################################
 	# DDC
@@ -106,23 +107,23 @@ class PresetInterpreterDDCAndCalibratorV1:
 		self.ddc_config = "\r\n".join(lines)
 
 	def write_ddc_config(self):
-		path = self.init.get("ddc").get("config_dir")
+		path = self.preset.ddc.config_dir
 
 		with open(f"{path}/radar_config.ini", "w", encoding="cp1251") as f:
 			f.write(self.ddc_config)
 
 	def prep_ddc_frequency_table(self):
-		signals = self.init.get("signals")
+		signals = self.preset.signals
 		entries = []
 
 		for signal in signals:
-			tune_khz = parse_freq_expr(signal.get("tune"), "khz")
+			tune_khz = parse_freq_expr(signal.tune, "khz")
 			entries.append(f"157000 {tune_khz} 0 900 0 2150 21550\r\n")
 
 		self.ddc_frequency_table = "".join(entries)
 
 	def write_ddc_frequency_table(self):
-		path = self.init.get("ddc").get("config_dir")
+		path = self.preset.ddc.config_dir
 
 		with open(f"{path}/frequency2.cfg", "w") as f:
 			f.write(self.ddc_frequency_table)
@@ -131,15 +132,15 @@ class PresetInterpreterDDCAndCalibratorV1:
 	# Calibrator
 	##############################################################################
 	def prep_calibrator_command_sequence(self):
-		signals = self.init.get("signals")
+		signals = self.preset.signals
 		sequence = []
 
 		sequence.append("seq stop")
 		sequence.append("seq reset")
 
 		for signal in signals:
-			sequence.append(f"set_level " + signal.get("level"))
-			sequence.append(f"seq " + signal.get("emit"))
+			sequence.append(f"set_level " + signal.level)
+			sequence.append(f"seq " + signal.emit)
 
 		self.calibrator_command_sequence = sequence
 

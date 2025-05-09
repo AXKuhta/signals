@@ -92,9 +92,18 @@ class Schema:
 			[ (k, getattr(cls, k)) for k in dir(cls)]
 		))
 
-	# to dict
 	def serialize(self):
-		pass
+		"""
+		Translate into a dict
+		"""
+
+		def flat(x):
+			if isinstance(x, list):
+				return [flat(z) for z in x]
+
+			return x.serialize() if isinstance(x, Schema) else x
+
+		return { k: flat(getattr(self, k)) for k in self.fields() }
 
 	@classmethod
 	def trial_signatures(cls, obj, schemas):
