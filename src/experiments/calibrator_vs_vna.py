@@ -302,15 +302,26 @@ def run_v2():
 			result = page([spectral])
 			result.show()
 
-	#a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T07_46_55+00_00") # Attenuator 5 dB
-	#a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T07_56_09+00_00") # HPF
-	a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T07_59_26+00_00") # LPF
-	b = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T07_44_00+00_00") # Thru
+	mode = "narrowband"
+	#mode = "wideband"
+
+	if mode == "wideband":
+		#a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T07_46_55+00_00") # Attenuator 5 dB
+		#a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T07_56_09+00_00") # HPF
+		a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T07_59_26+00_00") # LPF
+		b = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T07_44_00+00_00") # Thru
+	elif mode == "narrowband":
+		#a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T08_07_26+00_00") # Attenuator 5 dB
+		#a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T08_12_56+00_00") # HPF
+		a = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T08_15_13+00_00") # LPF
+		b = FrequencyResponsePointsV1("/media/pop/32/calibrator_data_v1/calibrator_v1_2025-04-15T08_05_05+00_00") # Thru
+	else:
+		assert 0
 
 	spectral = minmaxplot("Hz")
 	spectral.xtitle("Частота")
-	spectral.ytitle("dB")
-	spectral.yrange([-10, 0])
+	spectral.ytitle("Усиление (dB)")
+	#spectral.yrange([-10, 0])
 
 	# Stick to channel 1
 	x = a.adc_ch_x[1]
@@ -327,8 +338,13 @@ def run_v2():
 	with open(fname_vna, "rb") as f:
 		vna = S2PFile(f)
 
-	vna_x = vna.freqs
+	vna_x = np.array(vna.freqs)
 	vna_y = 20*np.log10( np.abs(vna.s21) )
+
+	if mode == "narrowband":
+		indices = np.where( (vna_x >= 154*1000*1000)*(vna_x <= 162*1000*1000) )
+		vna_x = vna_x[indices]
+		vna_y = vna_y[indices]
 
 	spectral.trace(vna_x, vna_y, name="VNA")
 
