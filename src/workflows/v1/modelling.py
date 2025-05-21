@@ -116,8 +116,8 @@ class ModelSignalV1:
 			# - Pulses have ConvDelayEstimator
 
 			# Establish the frequencies at truncated head/tail
-			start = duration*trim + delay
-			stop = duration*(1-trim) + delay
+			start = duration*trim
+			stop = duration*(1-trim)
 
 			temporal_indices = (time >= start) * (time < stop)
 

@@ -109,8 +109,8 @@ class FrequencyResponsePointsV1:
 			tune = parse_freq_expr(signal.descriptor.tune)
 
 			# Pulse cropping
-			start = signal.duration*trim + signal.delay
-			stop = signal.duration*(1-trim) + signal.delay
+			start = signal.duration*trim
+			stop = signal.duration*(1-trim)
 
 			indices = (signal.time >= start) * (signal.time < stop)
 
@@ -131,7 +131,6 @@ class FrequencyResponsePointsV1:
 				repeats = list(filter(filter_fn, captures))
 
 				assert all([x.center_freq == tune for x in repeats])
-
 				a = [signal.eliminate_delay(x.iq) for x in repeats]
 				a = np.abs(np.vstack(a))
 
