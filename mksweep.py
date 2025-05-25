@@ -33,7 +33,7 @@ b = int(args.b)
 parse_volt_expr(args.level)
 
 ddc = {
-      "config_dir": "c:/workprogs/active/",
+      "config_dir": "c:/workprogs/calibrator_mode/",
       "samplerate": "5 MHz",
       "frames": 8192
 }

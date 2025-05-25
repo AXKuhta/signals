@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 import json
 import os
 
+import asyncio
+
 from .calibrator import Calibrator
 from src.misc import parse_freq_expr
 from src.schemas.v1 import *
@@ -86,13 +88,13 @@ class PresetInterpreterDDCAndCalibratorV1:
 		lines.append("Включить multicast=1")
 		lines.append("Multicast-группа=234.5.6.7")
 		lines.append("Multicast-порт=25000")
-		lines.append("Multicast-интерфейс=10.15.15.1")
+		lines.append("Multicast-интерфейс=192.168.0.7")
 		lines.append("Включить watchdog=0")
 		lines.append("Watchdog адрес=192.168.0.1")
 		lines.append("Watchdog порт=9010")
-		lines.append("Старый Thunderbolt=1")
+		lines.append("Старый Thunderbolt=0")
 		lines.append("Режим калибратора=0")
-		lines.append("Время из ОС=1")
+		lines.append("Время из ОС=0")
 		lines.append("[Настройки режима НР]")
 		lines.append("НР прореживание канал 0=1")
 		lines.append("НР прореживание канал 1=1")
@@ -117,8 +119,8 @@ class PresetInterpreterDDCAndCalibratorV1:
 		entries = []
 
 		for signal in signals:
-			tune_khz = parse_freq_expr(signal.tune, "khz")
-			entries.append(f"157000 {tune_khz} 0 900 0 2150 21550\r\n")
+			tune_khz = int( parse_freq_expr(signal.tune, "khz") )
+			entries.append(f"157000 {tune_khz} 10 900 0 2150 0\r\n")
 
 		self.ddc_frequency_table = "".join(entries)
 

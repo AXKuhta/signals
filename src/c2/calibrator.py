@@ -6,7 +6,7 @@ class Calibrator:
 	There may be two of those in the future.
 	"""
 
-	def __init__(self, ip="10.15.15.250", port=80, log_location="log.txt"):
+	def __init__(self, ip="192.168.0.12", port=80, log_location="log.txt"):
 		self.sock = socket(AF_INET, SOCK_STREAM)
 		print(f"Calibrator: trying {ip}:{port}")
 		self.sock.connect( (ip, port) )
