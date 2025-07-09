@@ -112,8 +112,8 @@ class PhaseDeltaPointsV1:
 			tune = parse_freq_expr(signal.descriptor.tune)
 
 			# Pulse cropping
-			start = signal.duration*trim + signal.delay
-			stop = signal.duration*(1-trim) + signal.delay
+			start = signal.duration*trim
+			stop = signal.duration*(1-trim)
 
 			indices = (signal.time >= start) * (signal.time < stop)
 
@@ -259,7 +259,7 @@ class PhaseDeltaPointsV1:
 			spectral.ytitle("Radians")
 			factor = 1.0
 		else:
-			spectral.ytitle("Градусы")
+			spectral.ytitle("Разность фаз (°)")
 			factor = 180.0 / np.pi
 
 		spectral.trace(
