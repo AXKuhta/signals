@@ -38,7 +38,7 @@ class minmaxplot():
 	Supports optional secondary y axis.
 	"""
 
-	def __init__(self, x_unit=None, secondary_y=False, planar=False):
+	def __init__(self, x_unit=None, secondary_y=False, planar=False, scientific=True):
 		self.reset_color_cycler()
 		self.secondary_y = secondary_y
 		self.x_logscale = False
@@ -49,6 +49,7 @@ class minmaxplot():
 		self.y_range = []
 		self.x_unit = x_unit
 		self.planar = planar
+		self.scientific = scientific
 		self.header_html = ""
 		self.footer_html = ""
 		self.traces = []
@@ -197,8 +198,14 @@ class minmaxplot():
 			linecolor='grey',
 			gridcolor='grey',
 			tickcolor='grey',
-			title=self.y_title
+			title=self.y_title,
 		)
+
+		if self.scientific:
+			fig.update_yaxes(
+				exponentformat="power",
+				showexponent="last"
+			)
 
 		if self.x_range:
 			fig.update_layout(xaxis_range=self.x_range)
