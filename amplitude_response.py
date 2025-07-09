@@ -256,8 +256,10 @@ class FrequencyResponsePointsV1:
 		Mode.REFERENCED		Trace power gain against a reference
 		"""
 
-		spectral = minmaxplot("Hz")
-		spectral.xtitle("Частота")
+		spectral = minmaxplot()
+		spectral.xtitle("Частота (МГц)")
+		spectral.xexponent(False)
+		spectral.yexponent(True, scientific=True)
 
 		if mode == Mode.RAW:
 			spectral.ytitle("Код АЦП")

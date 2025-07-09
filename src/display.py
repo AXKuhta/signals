@@ -38,7 +38,7 @@ class minmaxplot():
 	Supports optional secondary y axis.
 	"""
 
-	def __init__(self, x_unit=None, secondary_y=False, planar=False, scientific=True):
+	def __init__(self, x_unit=None, secondary_y=False, planar=False):
 		self.reset_color_cycler()
 		self.secondary_y = secondary_y
 		self.x_logscale = False
@@ -49,7 +49,10 @@ class minmaxplot():
 		self.y_range = []
 		self.x_unit = x_unit
 		self.planar = planar
-		self.scientific = scientific
+		self.x_exponentformat = None
+		self.y_exponentformat = None
+		self.x_showexponent = None
+		self.y_showexponent = None
 		self.header_html = ""
 		self.footer_html = ""
 		self.traces = []
@@ -77,6 +80,22 @@ class minmaxplot():
 
 	def yrange(self, range):
 		self.y_range = range
+
+	def xexponent(self, enable, scientific=False):
+		if enable == False:
+			self.x_showexponent="none"
+		else:
+			if scientific:
+				self.x_showexponent="last"
+				self.x_exponentformat="power"
+
+	def yexponent(self, enable, scientific=False):
+		if enable == False:
+			self.y_showexponent="none"
+		else:
+			if scientific:
+				self.y_showexponent="last"
+				self.y_exponentformat="power"
 
 	def reset_color_cycler(self):
 		self.hsl_color_cycler = [] + plotly.colors.qualitative.Plotly + plotly.colors.qualitative.T10 + ["#FF0000"]*90
@@ -189,7 +208,9 @@ class minmaxplot():
 			linecolor='grey',
 			gridcolor='grey',
 			tickcolor='grey',
-			title=self.x_title
+			title=self.x_title,
+			exponentformat=self.x_exponentformat or "SI",
+			showexponent=self.x_showexponent or "all"
 		)
 		fig.update_yaxes(
 			mirror=True,
@@ -199,13 +220,9 @@ class minmaxplot():
 			gridcolor='grey',
 			tickcolor='grey',
 			title=self.y_title,
+			exponentformat=self.y_exponentformat or "SI",
+			showexponent=self.y_showexponent or "all"
 		)
-
-		if self.scientific:
-			fig.update_yaxes(
-				exponentformat="power",
-				showexponent="last"
-			)
 
 		if self.x_range:
 			fig.update_layout(xaxis_range=self.x_range)
