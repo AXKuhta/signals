@@ -201,9 +201,6 @@ class FrequencyResponsePointsV1:
 			lower = []
 			upper = []
 
-			print(x[0])
-			print(unique[0])
-
 			for i in range( 1, len(unique) ):
 				ind1 = np.where(indices == i)
 				sub1 = y[:, ind1]
@@ -215,9 +212,11 @@ class FrequencyResponsePointsV1:
 				mampl.append(np.mean(bin))
 				lower.append(np.min(bin))
 				upper.append(np.max(bin))
-				print(i)
 
-			adc_ch_x[chan] = unique
+			# For 849 frequency points
+			# There will be 848 bins
+			# Align frequencies to bin centers
+			adc_ch_x[chan] = unique[1:] - roundto/2
 			adc_ch_y[chan] = mampl
 
 		self.adc_ch_x = adc_ch_x
