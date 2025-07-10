@@ -80,10 +80,6 @@ class FrequencyResponsePointsV1:
 
 		chan_set = set([x.channel_number for x in captures])
 
-		# Trigger number rewrite
-		for i, capture in enumerate(captures):
-			capture.trigger_number = i // len(chan_set)
-
 		print("Loaded", len(captures), "captures")
 		print(len(chan_set), "channels active")
 
@@ -125,11 +121,8 @@ class FrequencyResponsePointsV1:
 
 			# Deal with channels and repeated captures
 			for channel in chan_set:
-				filter_fn = lambda x: x.trigger_number % len(signals) == i and x.channel_number == channel
-
+				filter_fn = lambda x: x.center_freq == tune and x.channel_number == channel
 				repeats = list(filter(filter_fn, captures))
-
-				assert all([x.center_freq == tune for x in repeats])
 
 				x = signal.temporal_freq[indices] + tune
 				y = np.vstack(
