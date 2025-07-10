@@ -1,4 +1,3 @@
-
 from enum import Enum, auto
 from glob import glob
 import argparse
@@ -102,8 +101,11 @@ class FrequencyResponsePointsV1:
 		for descriptor in preset.signals:
 			signals.append( ModelSignalV1(descriptor, preset.ddc) )
 
-		# Onto the actual processing
-		# Delay elimination + amplitude + averaging
+		# Keep track of what pulses had the most captures
+		max_h = 0
+
+		# First pass over the data
+		# Pulse modelling + filtering + delay elimination
 		#################################################################################################
 		for i, signal in enumerate(signals):
 			tune = parse_freq_expr(signal.descriptor.tune)
@@ -121,43 +123,102 @@ class FrequencyResponsePointsV1:
 			model_x.append(x)
 			model_y.append(y)
 
-			# Actual captures
-			# Deal with:
-			# - Different channels
-			# - Accumulation
+			# Deal with channels and repeated captures
 			for channel in chan_set:
 				filter_fn = lambda x: x.trigger_number % len(signals) == i and x.channel_number == channel
 
 				repeats = list(filter(filter_fn, captures))
 
 				assert all([x.center_freq == tune for x in repeats])
-				a = [signal.eliminate_delay(x.iq) for x in repeats]
-				a = np.abs(np.vstack(a))
-
-				mampl = a.mean(0)
-				lower, _ = a.min(0), np.argmin(0)
-				upper, _ = a.max(0), np.argmax(0)
 
 				x = signal.temporal_freq[indices] + tune
-				y = mampl[indices]
-
-				lower = lower[indices]
-				upper = upper[indices]
+				y = np.vstack(
+					[signal.eliminate_delay(x.iq)[indices] for x in repeats]
+				)
 
 				adc_ch_x[channel].append(x)
 				adc_ch_y[channel].append(y)
 
-		# Second pass over the data to sort it - this deals with overlap
+				if len(repeats) > max_h:
+					max_h = len(repeats)
+
+		# Second pass over the data to pool it, sort and bin it
+		# Some pulses may have less captures than others; this is deat with:
+		# - By zero padding
+		# - And a mask
+		#
+		# Total memory utilization per channel is in the ballpark of:
+		# - Captures:
+		#	Five minute session
+		#	25 captures per second
+		#	4096 samples per capture
+		#	complex128 samples = 16 bytes
+		#	about 491 MB
+		#
+		# - Mask:
+		#	bools = 1 byte
+		#	about 30 MB
 		#################################################################################################
 		for chan in chan_set:
-			x = np.hstack(adc_ch_x[chan])
-			y = np.hstack(adc_ch_y[chan])
+			# x will stack no problem
+			# y needs padding
 
+			x = np.hstack(adc_ch_x[chan]) # Frequency values
+			y = [] # Amplitude values
+			m = [] # Legitimate/padding mask
+
+			for pulse in adc_ch_y[chan]:
+				h, w = pulse.shape
+				u = np.zeros([max_h, w], dtype=np.complex128)
+				v = np.zeros([max_h, w], dtype=np.bool)
+
+				u[:h] = pulse
+				v[:h] = True
+
+				y.append(u)
+				m.append(v)
+
+			y = np.abs(np.hstack(y))
+			m = np.hstack(m)
+
+			# Sort so frequency is monotonic
 			x, indices = np.sort(x), np.argsort(x)
-			y = y[indices]
+			y = y[:, indices]
+			m = m[:, indices]
 
-			adc_ch_x[chan] = x
-			adc_ch_y[chan] = y
+			# Binning
+			roundto = 10000
+			repeat = np.round(x/roundto)*roundto
+			unique, indices = np.unique(repeat, return_index=True)
+
+			# Digitize assigns index of 0 to values that are out-of-bounds
+			# e.g. fall outside the lowest bin
+			indices = np.digitize(x, unique)
+
+			assert not np.any(indices == 0), "bin bugcheck"
+
+			mampl = []
+			lower = []
+			upper = []
+
+			print(x[0])
+			print(unique[0])
+
+			for i in range( 1, len(unique) ):
+				ind1 = np.where(indices == i)
+				sub1 = y[:, ind1]
+				mub1 = m[:, ind1]
+
+				ind2 = np.where(mub1)
+				bin = sub1[ind2]
+
+				mampl.append(np.mean(bin))
+				lower.append(np.min(bin))
+				upper.append(np.max(bin))
+				print(i)
+
+			adc_ch_x[chan] = unique
+			adc_ch_y[chan] = mampl
 
 		self.adc_ch_x = adc_ch_x
 		self.adc_ch_y = adc_ch_y
