@@ -39,7 +39,11 @@ class ORDACap:
 		self.samplecount = samplecount
 
 		imag, real = np.frombuffer(iq_bytes, dtype=np.int16).reshape(2, self.samplecount)
-		self.iq = real + 1j*imag
+
+		# https://github.com/numpy/numpy/issues/16039
+		self.iq = np.empty(self.samplecount, dtype=np.complex128)
+		self.iq.real = real
+		self.iq.imag = imag
 
 	@property
 	def basic(self):
