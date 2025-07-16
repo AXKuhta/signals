@@ -108,6 +108,7 @@ sessions = [
 ]
 
 # This function takes captures and model signals
+# CH1-CH3
 def extract_phase_delta(captures, signals):
 	idx_a = 1
 	idx_b = 3
@@ -171,6 +172,12 @@ def run_v1():
 	prop_cycle = plt.rcParams['axes.prop_cycle']
 	colors = prop_cycle.by_key()['color']
 
+	plt.rcParams['axes.autolimit_mode'] = 'round_numbers'
+	plt.rcParams['axes.xmargin'] = 0
+	plt.rcParams['axes.ymargin'] = 0
+
+	fig, (ax1, ax2) = plt.subplots(2)
+
 	for descriptor in preset.signals:
 		signals.append( ModelSignalV1(descriptor, preset.ddc) )
 
@@ -194,11 +201,11 @@ def run_v1():
 
 		if session["forward"] < session["inverse"]:
 			print("Forward first")
-			since = fwd_captures[-1].timestamp - timedelta(minutes=2)
-			until = inv_captures[0].timestamp + timedelta(minutes=2)
+			since = fwd_captures[-1].timestamp - timedelta(minutes=5)
+			until = inv_captures[0].timestamp + timedelta(minutes=5)
 		else:
-			since = inv_captures[-1].timestamp - timedelta(minutes=2)
-			until = fwd_captures[0].timestamp + timedelta(minutes=2)
+			since = inv_captures[-1].timestamp - timedelta(minutes=5)
+			until = fwd_captures[0].timestamp + timedelta(minutes=5)
 			print("Inverse first")
 
 		print(since)
@@ -212,10 +219,40 @@ def run_v1():
 		print(len(fwd_captures), "forward captures")
 		print(len(inv_captures), "inverse captures")
 
-		x1, y1 = extract_phase_delta(fwd_captures, signals)
-		x2, y2 = extract_phase_delta(inv_captures, signals)
+		x_fwd, y_fwd = extract_phase_delta(fwd_captures, signals)
+		x_inv, y_inv = extract_phase_delta(inv_captures, signals)
 
-		plt.plot(x1, y1, c=colors[0])
-		plt.plot(x1, y2, c=colors[1])
+		rffe_only = 0.5 * (y_fwd + y_inv)
+		feed_only = 0.5 * (y_fwd - y_inv)
+
+		timespan = since.strftime("%H:%M") + "..." + until.strftime("%H:%M")
+
+		ax1.plot(x_fwd, rffe_only * (180/np.pi), label=timespan, marker="o")
+		ax2.plot(x_fwd, feed_only * (180/np.pi), marker="o")
+
+	fig.suptitle("Периодическая оценка разности фаз между каналами приемного тракта,\nдата и время: 2025-07-09, от 07:23 до 15:39 UT; канал A − канал B")
+	ax1.set_title("Разность фаз, обеспеченная несимметричностью каналов приемного тракта")
+	ax2.set_title("Разность фаз, обеспеченная особенностями кабелей")
+
+	#ax1.legend()
+
+	ax1.set_xlabel("Частота (МГц)")
+	ax2.set_xlabel("Частота (МГц)")
+	ax1.set_ylabel("Разность фаз (°)")
+	ax2.set_ylabel("Разность фаз (°)")
+
+	ticks_loc = x_fwd
+	ticks_txt = x_fwd/1000/1000
+
+	ticks_loc = ticks_loc[::4]
+	ticks_txt = ticks_txt[::4]
+
+	ax1.set_xticks(ticks_loc, ticks_txt)
+	ax2.set_xticks(ticks_loc, ticks_txt)
+
+	ax1.grid(True)
+	ax2.grid(True)
+
+	fig.legend(loc="right")
 
 	plt.show()
