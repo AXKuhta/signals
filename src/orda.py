@@ -1,5 +1,5 @@
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import struct
 
 import numpy as np
@@ -124,9 +124,8 @@ class StreamORDA:
 				hour = pairs[11] & 0xFF,
 				minute = pairs[11] // 256,
 				second = pairs[12],
-				microsecond = pairs[13] * 1000,
 				tzinfo = timezone.utc
-			)
+			) + timedelta(microseconds = pairs[13] * 1000) # Microseconds added as offset bc pairs[13]*1000 is sometimes 1000000 which is not valid for datetime()
 
 	def advance(self):
 		header = self.fd.read(9)
