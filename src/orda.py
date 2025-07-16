@@ -38,7 +38,7 @@ class ORDACap:
 		self.samplerate = samplerate
 		self.samplecount = samplecount
 
-		imag, real = np.frombuffer(iq_bytes, dtype=np.int16).reshape(2, self.samplecount) / 1.0
+		imag, real = np.frombuffer(iq_bytes, dtype=np.int16).reshape(2, self.samplecount)
 		self.iq = real + 1j*imag
 
 	@property
