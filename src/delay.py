@@ -63,7 +63,8 @@ class SpectralDelayEstimator():
 		self.frames = model_signal.shape[0]
 		self.indices_allow = indices_allow
 
-	def estimate_old(self, signal):
+	# V0: initial version
+	def estimate_old_old(self, signal):
 		spectrum_s = np.fft.fft(signal)
 		spectrum_c = spectrum_s * self.spectrum_m
 
@@ -73,7 +74,8 @@ class SpectralDelayEstimator():
 
 		return sample_delay
 
-	def estimate(self, signal):
+	# V1: avoid diffing angles, diff IQ
+	def estimate_old(self, signal):
 		spectrum_s = np.fft.fft(signal)
 		spectrum_c = spectrum_s * self.spectrum_m
 
@@ -98,3 +100,15 @@ class SpectralDelayEstimator():
 		#visual_debug()
 
 		return sample_delay
+
+	# V2: avoid excessive use np.angle() which is expensive
+	def estimate(self, signal):
+		spectrum_s = np.fft.fft(signal)
+		spectrum_c = spectrum_s * self.spectrum_m
+
+		shifted = np.fft.fftshift(spectrum_c)
+		diff = shifted * np.roll(shifted, 1).conj()
+		acc_angle = np.sum(diff[self.indices_allow])
+		tau = np.angle(acc_angle) * self.frames / (2*np.pi)
+
+		return -tau
