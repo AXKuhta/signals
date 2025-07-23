@@ -247,8 +247,6 @@ def run_v1():
 
 	fig, (ax1, ax2) = plt.subplots(2, figsize=[16, 10])
 
-	#fig.tight_layout()
-
 	im1 = ax1.imshow( np.transpose(ch_a_stream) )
 	im2 = ax2.imshow( np.transpose(ch_b_stream) )
 
@@ -287,24 +285,6 @@ def run_v1():
 	cbar2 = fig.colorbar(im2, ax=ax2)
 	cbar1.ax.set_ylabel("Код АЦП")
 	cbar2.ax.set_ylabel("Код АЦП")
-
-	"""
-	-xtick_px = [ i for i in range( len(dataframes[0].ch1_adc) ) ]
-	-xtick_hz = [ f"{x/1000/1000:.1f}" for x in dataframes[0].freq_hz ]
-	-
-	-ytick_px = [ i for i in range(len(dataframes)) ]
-	-ytick_ts = [ (ts_start + timedelta(seconds=10*i)).strftime("%H:%M:%S") for i in ytick_px ]
-	-
-	-sl = slice(23, None, 100)
-	-
-	-ax1.set_yticks(ytick_px[::18], ytick_ts[::18])
-	-ax2.set_yticks(ytick_px[::18], ytick_ts[::18])
-	-
-	-ax1.set_xticks(xtick_px[sl], xtick_hz[sl])
-	-ax2.set_xticks(xtick_px[sl], xtick_hz[sl])
-	-ax1.set_xlabel("Частота (МГц)")
-	-ax2.set_xlabel("Частота (МГц)")
-	"""
 
 	plt.show()
 	fig.savefig("result.png", dpi=300)
