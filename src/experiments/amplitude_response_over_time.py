@@ -119,6 +119,18 @@ def extract_amplitude_response(captures, signals, bins):
 
 	trim = 0.05
 
+	z = np.arange(8192)
+
+	from functools import cache
+
+	@cache
+	def get_ind(signal):
+		start = signal.duration*trim
+		stop = signal.duration*(1-trim)
+		indices = (signal.time >= start) * (signal.time < stop)
+		x = signal.temporal_freq[indices] + parse_freq_expr(signal.descriptor.tune)
+		return np.digitize(x, bins) # Expensive, so avoid doing it over and over again
+
 	for capture in captures:
 		filter_fn = lambda x: parse_freq_expr(x.descriptor.tune) == capture.center_freq
 		signal = next(filter(filter_fn, signals))
@@ -131,13 +143,23 @@ def extract_amplitude_response(captures, signals, bins):
 
 		indices = (signal.time >= start) * (signal.time < stop)
 
+		#delay = 2541 #signal.est.estimate(capture.iq)
+		#d2 = np.int32(np.round(delay))
+		d2 = 2541
+
+		#if delay<2000 or delay>2700:
+		#	continue
+
+		#print(delay)
+
 		x = signal.temporal_freq[indices] + tune
-		y = signal.eliminate_delay(capture.iq)[indices]
+		y = capture.iq[z[indices] + d2]
 		y = np.abs(y)
 
 		# Some summation
 		# Bad approarch from a numerical standpoint? accumulators get very large values
-		ind = np.digitize(x, bins)
+		#ind = np.digitize(x, bins)
+		ind = get_ind(signal)
 		acc = np.bincount(ind, y, n_bins)
 		cnt = np.bincount(ind, None, n_bins)
 
@@ -181,6 +203,7 @@ def run_v1():
 
 	ch_a_stream = []
 	ch_b_stream = []
+	timestamps = []
 
 	# Captures in time window
 	class window:
@@ -196,6 +219,7 @@ def run_v1():
 		a, b = extract_amplitude_response(window.captures, signals, bins)
 		ch_a_stream.append(a)
 		ch_b_stream.append(b)
+		timestamps.append(window.since)
 		window.captures = []
 
 	try:
@@ -221,9 +245,66 @@ def run_v1():
 	plt.imsave( "channelA.png", np.transpose(ch_a_stream) )
 	plt.imsave( "channelB.png", np.transpose(ch_b_stream) )
 
-	fig, (ax1, ax2) = plt.subplots(2)
+	fig, (ax1, ax2) = plt.subplots(2, figsize=[16, 10])
 
-	ax1.imshow( np.transpose(ch_a_stream) )
-	ax2.imshow( np.transpose(ch_b_stream) )
+	#fig.tight_layout()
+
+	im1 = ax1.imshow( np.transpose(ch_a_stream) )
+	im2 = ax2.imshow( np.transpose(ch_b_stream) )
+
+	mhz = bins/1000/1000
+
+	ytick_px = np.searchsorted(mhz, np.unique(np.round(mhz)))
+	ytick_hz = [f"{x:.1f}" for x in mhz[ytick_px]]
+
+	sl = slice(None, None, 200)
+
+	xtick_px = np.arange( len(timestamps) )[sl]
+	xtick_ts = [x.strftime("%H:%M") for x in timestamps[sl] ]
+
+	ax1.set_yticks(ytick_px, ytick_hz)
+	ax2.set_yticks(ytick_px, ytick_hz)
+
+	ax1.set_xticks(xtick_px, xtick_ts)
+	ax2.set_xticks(xtick_px, xtick_ts)
+
+	#ax1.set_xlabel("Время UT")
+	#ax2.set_xlabel("Время UT")
+	ax1.set_ylabel("Частота (МГц)")
+	ax2.set_ylabel("Частота (МГц)")
+
+	plt.setp(ax1.get_xticklabels(), rotation=20, ha="right")
+	plt.setp(ax2.get_xticklabels(), rotation=20, ha="right")
+
+	ax1.grid(True, c="black", alpha=0.5, linewidth=1)
+	ax2.grid(True, c="black", alpha=0.5, linewidth=1)
+
+	fig.suptitle("Периодическая оценка АЧХ приемного тракта с чередованием входов ВУПа\nдата и время: 2025-07-09, от 07:23 до 15:39 UT;")
+	ax1.set_title("Канал A")
+	ax2.set_title("Канал B")
+
+	cbar1 = fig.colorbar(im1, ax=ax1)
+	cbar2 = fig.colorbar(im2, ax=ax2)
+	cbar1.ax.set_ylabel("Код АЦП")
+	cbar2.ax.set_ylabel("Код АЦП")
+
+	"""
+	-xtick_px = [ i for i in range( len(dataframes[0].ch1_adc) ) ]
+	-xtick_hz = [ f"{x/1000/1000:.1f}" for x in dataframes[0].freq_hz ]
+	-
+	-ytick_px = [ i for i in range(len(dataframes)) ]
+	-ytick_ts = [ (ts_start + timedelta(seconds=10*i)).strftime("%H:%M:%S") for i in ytick_px ]
+	-
+	-sl = slice(23, None, 100)
+	-
+	-ax1.set_yticks(ytick_px[::18], ytick_ts[::18])
+	-ax2.set_yticks(ytick_px[::18], ytick_ts[::18])
+	-
+	-ax1.set_xticks(xtick_px[sl], xtick_hz[sl])
+	-ax2.set_xticks(xtick_px[sl], xtick_hz[sl])
+	-ax1.set_xlabel("Частота (МГц)")
+	-ax2.set_xlabel("Частота (МГц)")
+	"""
 
 	plt.show()
+	fig.savefig("result.png", dpi=300)
